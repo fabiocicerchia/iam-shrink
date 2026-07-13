@@ -1,0 +1,5 @@
+[
+  { "eventSource": "s3.amazonaws.com", "eventName": "GetObject" },
+  { "eventSource": "s3.amazonaws.com", "eventName": "PutObject" },
+  { "eventSource": "sqs.amazonaws.com", "eventName": "SendMessage" }
+]
