@@ -67,7 +67,7 @@ GROUP BY 1, 2
 - [x] Built-in Athena/CloudTrail Lake query runner (`--athena-table`)
 - [x] IAM Access Analyzer cross-check (their unused-access findings as input)
 - [x] Resource-level narrowing from event resources
-- [ ] `--open-pr` mode
+- [x] `--open-pr` mode
 
 ## Documentation
 

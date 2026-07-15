@@ -1,8 +1,11 @@
+import os
+
 from iam_shrink import (
     allowed_actions,
     fetch_analyzer_unused_actions,
     fetch_events_via_athena,
     minimized_policy,
+    open_pr,
     shrink,
     tf_diff,
     used_action_resources,
@@ -136,3 +139,24 @@ def test_tf_diff_narrows_resource_for_actions_with_known_arns():
     diff = tf_diff("my-role", {"s3:GetObject", "sqs:SendMessage"}, set(), resource_map)
     assert '"arn:aws:s3:::my-bucket/key"' in diff
     assert 'Resource = "*"' in diff
+
+
+def test_open_pr_writes_file_and_shells_out_in_order(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    calls = []
+
+    class _Result:
+        stdout = "https://github.com/org/repo/pull/1\n"
+
+    def fake_run(cmd):
+        calls.append(cmd)
+        return _Result()
+
+    url = open_pr("my-app-role", "# tf content", run=fake_run)
+
+    assert url == "https://github.com/org/repo/pull/1"
+    assert os.path.exists(tmp_path / "my-app-role-minimized.tf")
+    assert (tmp_path / "my-app-role-minimized.tf").read_text() == "# tf content"
+    assert [c[0] for c in calls] == ["git", "git", "git", "git", "gh"]
+    assert calls[0] == ["git", "checkout", "-b", "iam-shrink/my-app-role"]
+    assert calls[-1][:3] == ["gh", "pr", "create"]
