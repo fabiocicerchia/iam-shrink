@@ -41,6 +41,18 @@ def used_actions(events):
     return actions
 
 
+def used_action_resources(events):
+    """Map used action -> resource ARNs, where CloudTrail recorded them on the event."""
+    mapping = {}
+    for e in events:
+        key = (e.get("eventSource", ""), e.get("eventName", ""))
+        action = EVENT_TO_ACTION.get(key, f"{key[0].split('.')[0]}:{key[1]}")
+        arns = {r["ARN"] for r in e.get("resources", []) if r.get("ARN")}
+        if arns:
+            mapping.setdefault(action, set()).update(arns)
+    return mapping
+
+
 def allowed_actions(policy_documents):
     """Flatten Allow statements into a set of action patterns."""
     patterns = set()
@@ -72,21 +84,43 @@ def shrink(allowed_patterns, used):
     return kept, removable
 
 
-def minimized_policy(kept):
-    return {
-        "Version": "2012-10-17",
-        "Statement": [
+def _split_by_resource(kept, resource_map):
+    """kept actions with a known resource ARN vs. the rest (stay on Resource: "*")."""
+    resource_map = resource_map or {}
+    scoped = {a: sorted(resource_map[a]) for a in kept if resource_map.get(a)}
+    wildcard = sorted(a for a in kept if a not in scoped)
+    return wildcard, scoped
+
+
+def minimized_policy(kept, resource_map=None):
+    wildcard, scoped = _split_by_resource(kept, resource_map)
+    statements = []
+    if wildcard:
+        statements.append(
             {
                 "Sid": "IamShrinkMinimized",
                 "Effect": "Allow",
-                "Action": sorted(kept),
-                "Resource": "*",  # resource narrowing is phase 2 (see README)
+                "Action": wildcard,
+                "Resource": "*",
             }
-        ],
-    }
+        )
+    for action, arns in sorted(scoped.items()):
+        sid = "IamShrinkMinimized" + action.replace(":", "").replace("*", "Any")
+        statements.append(
+            {"Sid": sid, "Effect": "Allow", "Action": [action], "Resource": arns}
+        )
+    return {"Version": "2012-10-17", "Statement": statements}
 
 
-def tf_diff(role_name, kept, removable):
+def tf_diff(role_name, kept, removable, resource_map=None):
+    wildcard, scoped = _split_by_resource(kept, resource_map)
+    statements = []
+    if wildcard:
+        statements.append((wildcard, '"*"'))
+    for action, arns in sorted(scoped.items()):
+        arn_list = "[" + ", ".join(f'"{a}"' for a in arns) + "]"
+        statements.append(([action], arn_list))
+
     lines = [
         f'# iam-shrink suggestion for role "{role_name}"',
         f"# {len(removable)} unused action pattern(s) removed, {len(kept)} kept",
@@ -96,13 +130,18 @@ def tf_diff(role_name, kept, removable):
         f"  role = aws_iam_role.{role_name.replace('-', '_')}.id",
         "  policy = jsonencode({",
         '    Version = "2012-10-17"',
-        "    Statement = [{",
-        '      Effect   = "Allow"',
-        "      Action   = [",
+        "    Statement = [",
     ]
-    for a in sorted(kept):
-        lines.append(f'        "{a}",')
-    lines += ["      ]", '      Resource = "*"', "    }]", "  })", "}", ""]
+    for actions, resource in statements:
+        lines.append("      {")
+        lines.append('        Effect   = "Allow"')
+        lines.append("        Action   = [")
+        for a in actions:
+            lines.append(f'          "{a}",')
+        lines.append("        ]")
+        lines.append(f"        Resource = {resource}")
+        lines.append("      },")
+    lines += ["    ]", "  })", "}", ""]
     for r in sorted(removable):
         lines.append(f"# removed (never used in observation window): {r}")
     return "\n".join(lines)
@@ -250,13 +289,14 @@ def main(argv=None):
         with open(args.usage) as fh:
             events = json.load(fh)
     used = used_actions(events)
+    resource_map = used_action_resources(events)
     allowed = allowed_actions(fetch_role_policies(args.role_name))
     kept, removable = shrink(allowed, used)
 
     if args.format == "policy":
-        json.dump(minimized_policy(kept), sys.stdout, indent=2)
+        json.dump(minimized_policy(kept, resource_map), sys.stdout, indent=2)
     elif args.format == "tf-diff":
-        print(tf_diff(args.role_name, kept, removable))
+        print(tf_diff(args.role_name, kept, removable, resource_map))
     else:
         print(f"# iam-shrink — role {args.role_name}")
         print(f"allowed patterns: {len(allowed)}, used actions: {len(used)}")

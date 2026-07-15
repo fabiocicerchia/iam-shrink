@@ -5,6 +5,7 @@ from iam_shrink import (
     minimized_policy,
     shrink,
     tf_diff,
+    used_action_resources,
     used_actions,
 )
 
@@ -106,3 +107,32 @@ def test_fetch_analyzer_unused_actions_paginates():
         client=_FakeAnalyzerClient(),
     )
     assert actions == {"s3:ListBucket", "dynamodb:Scan"}
+
+
+def test_used_action_resources_only_collects_actions_with_arns():
+    events = [
+        {
+            "eventSource": "s3.amazonaws.com",
+            "eventName": "GetObject",
+            "resources": [{"ARN": "arn:aws:s3:::my-bucket/key"}],
+        },
+        {"eventSource": "sqs.amazonaws.com", "eventName": "SendMessage"},
+    ]
+    assert used_action_resources(events) == {
+        "s3:GetObject": {"arn:aws:s3:::my-bucket/key"}
+    }
+
+
+def test_minimized_policy_narrows_resource_for_actions_with_known_arns():
+    resource_map = {"s3:GetObject": {"arn:aws:s3:::my-bucket/key"}}
+    policy = minimized_policy({"s3:GetObject", "sqs:SendMessage"}, resource_map)
+    by_action = {tuple(s["Action"]): s["Resource"] for s in policy["Statement"]}
+    assert by_action[("s3:GetObject",)] == ["arn:aws:s3:::my-bucket/key"]
+    assert by_action[("sqs:SendMessage",)] == "*"
+
+
+def test_tf_diff_narrows_resource_for_actions_with_known_arns():
+    resource_map = {"s3:GetObject": {"arn:aws:s3:::my-bucket/key"}}
+    diff = tf_diff("my-role", {"s3:GetObject", "sqs:SendMessage"}, set(), resource_map)
+    assert '"arn:aws:s3:::my-bucket/key"' in diff
+    assert 'Resource = "*"' in diff

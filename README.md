@@ -57,8 +57,8 @@ GROUP BY 1, 2
 
 - CloudTrail doesn't log **data events** by default (S3 object ops, etc.) —
   enable them or the shrink will over-remove; review the diff, always.
-- Resource-level narrowing is not attempted yet (`Resource: "*"` kept) —
-  action narrowing first, resources are phase 2.
+- Resource-level narrowing only applies to actions whose CloudTrail events
+  carry a `resources[].ARN` — the rest keep `Resource: "*"`.
 - Non-CloudTrail-visible actions (some `List`/`Describe`) need an allowlist.
 
 ## Status & roadmap
@@ -66,7 +66,7 @@ GROUP BY 1, 2
 - [x] Usage mapping, wildcard narrowing, report / JSON policy / TF diff
 - [x] Built-in Athena/CloudTrail Lake query runner (`--athena-table`)
 - [x] IAM Access Analyzer cross-check (their unused-access findings as input)
-- [ ] Resource-level narrowing from event resources
+- [x] Resource-level narrowing from event resources
 - [ ] `--open-pr` mode
 
 ## Documentation
