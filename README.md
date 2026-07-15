@@ -64,7 +64,7 @@ GROUP BY 1, 2
 ## Status & roadmap
 
 - [x] Usage mapping, wildcard narrowing, report / JSON policy / TF diff
-- [ ] Built-in Athena/CloudTrail Lake query runner (`--athena-table`)
+- [x] Built-in Athena/CloudTrail Lake query runner (`--athena-table`)
 - [ ] IAM Access Analyzer cross-check (their unused-access findings as input)
 - [ ] Resource-level narrowing from event resources
 - [ ] `--open-pr` mode

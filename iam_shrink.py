@@ -126,6 +126,48 @@ def fetch_role_policies(role_name):
     return docs
 
 
+# The exact query documented in the README, parameterized by role + window.
+ATHENA_QUERY = """\
+SELECT eventsource AS eventSource, eventname AS eventName
+FROM {table}
+WHERE useridentity.sessioncontext.sessionissuer.arn LIKE '%{role_name}'
+  AND eventtime > date_add('day', -{days}, now())
+GROUP BY 1, 2
+"""
+
+
+def fetch_events_via_athena(role_name, table, output_location, days=90, client=None):
+    """Run the CloudTrail Lake query from the README and return CloudTrail-shaped events."""
+    import time
+
+    import boto3
+
+    athena = client or boto3.client("athena")
+    query = ATHENA_QUERY.format(table=table, role_name=role_name, days=days)
+    exec_id = athena.start_query_execution(
+        QueryString=query,
+        ResultConfiguration={"OutputLocation": output_location},
+    )["QueryExecutionId"]
+
+    for _ in range(60):  # ~60s at 1s/poll, plenty for a small aggregate query
+        state = athena.get_query_execution(QueryExecutionId=exec_id)["QueryExecution"][
+            "Status"
+        ]["State"]
+        if state in ("SUCCEEDED", "FAILED", "CANCELLED"):
+            break
+        time.sleep(1)
+    if state != "SUCCEEDED":
+        raise RuntimeError(f"Athena query {exec_id} ended in state {state}")
+
+    rows = athena.get_query_results(QueryExecutionId=exec_id)["ResultSet"]["Rows"]
+    header = [c.get("VarCharValue") for c in rows[0]["Data"]]
+    events = []
+    for row in rows[1:]:
+        values = [c.get("VarCharValue") for c in row["Data"]]
+        events.append(dict(zip(header, values)))
+    return events
+
+
 def main(argv=None):
     p = argparse.ArgumentParser(
         prog="iam-shrink",
@@ -135,18 +177,37 @@ def main(argv=None):
     sub = p.add_subparsers(dest="cmd", required=True)
     s = sub.add_parser("analyze")
     s.add_argument("role_name")
-    s.add_argument(
+    usage_src = s.add_mutually_exclusive_group(required=True)
+    usage_src.add_argument(
         "--usage",
-        required=True,
         help="JSON file of CloudTrail events [{eventSource, eventName}, ...]",
+    )
+    usage_src.add_argument(
+        "--athena-table",
+        help="CloudTrail Lake table to query instead of --usage (needs --athena-output)",
+    )
+    s.add_argument(
+        "--athena-output",
+        help="S3 URI for Athena query results, required with --athena-table",
+    )
+    s.add_argument(
+        "--athena-days", type=int, default=90, help="Lookback window in days (default: 90)"
     )
     s.add_argument(
         "--format", choices=["report", "policy", "tf-diff"], default="report"
     )
     args = p.parse_args(argv)
 
-    with open(args.usage) as fh:
-        events = json.load(fh)
+    if args.athena_table and not args.athena_output:
+        p.error("--athena-table requires --athena-output")
+
+    if args.athena_table:
+        events = fetch_events_via_athena(
+            args.role_name, args.athena_table, args.athena_output, args.athena_days
+        )
+    else:
+        with open(args.usage) as fh:
+            events = json.load(fh)
     used = used_actions(events)
     allowed = allowed_actions(fetch_role_policies(args.role_name))
     kept, removable = shrink(allowed, used)
