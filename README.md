@@ -28,6 +28,18 @@ $ iam-shrink analyze my-app-role --usage q3-events.json \
     --format tf-diff > shrink.tf
 ```
 
+## Install
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/fabiocicerchia/iam-shrink/main/install.sh | bash
+```
+
+Or with pipx directly:
+
+```sh
+pipx install git+https://github.com/fabiocicerchia/iam-shrink
+```
+
 ## Getting usage data
 
 Export `{eventSource, eventName}` pairs for the role from CloudTrail — e.g.
