@@ -1,5 +1,6 @@
 from iam_shrink import (
     allowed_actions,
+    fetch_analyzer_unused_actions,
     fetch_events_via_athena,
     minimized_policy,
     shrink,
@@ -84,3 +85,24 @@ def test_fetch_events_via_athena_runs_query_and_parses_rows():
     assert "cloudtrail_logs" in client.query
     assert "my-app-role" in client.query
     assert "-30" in client.query
+
+
+class _FakeAnalyzerClient:
+    def list_findings_v2(self, analyzerArn, filter, nextToken=None):
+        assert analyzerArn == "arn:aws:access-analyzer:us-east-1:1:analyzer/x"
+        assert filter["resource"]["eq"] == ["arn:aws:iam::1:role/my-app-role"]
+        if nextToken is None:
+            return {
+                "findings": [{"action": ["s3:ListBucket"]}],
+                "nextToken": "page2",
+            }
+        return {"findings": [{"action": ["dynamodb:Scan"]}]}
+
+
+def test_fetch_analyzer_unused_actions_paginates():
+    actions = fetch_analyzer_unused_actions(
+        "arn:aws:access-analyzer:us-east-1:1:analyzer/x",
+        "arn:aws:iam::1:role/my-app-role",
+        client=_FakeAnalyzerClient(),
+    )
+    assert actions == {"s3:ListBucket", "dynamodb:Scan"}

@@ -168,6 +168,37 @@ def fetch_events_via_athena(role_name, table, output_location, days=90, client=N
     return events
 
 
+def fetch_analyzer_unused_actions(analyzer_arn, role_arn, client=None):
+    """IAM Access Analyzer's own UNUSED_PERMISSION findings for a role.
+
+    A second, independent signal for "unused": Access Analyzer sees actions
+    CloudTrail doesn't log by default (many List/Describe/Get calls), so this
+    is a cross-check on top of the CloudTrail-based shrink, not a replacement.
+    """
+    import boto3
+
+    analyzer = client or boto3.client("accessanalyzer")
+    actions = set()
+    next_token = None
+    while True:
+        kwargs = {
+            "analyzerArn": analyzer_arn,
+            "filter": {
+                "resource": {"eq": [role_arn]},
+                "findingType": {"eq": ["UnusedPermission"]},
+            },
+        }
+        if next_token:
+            kwargs["nextToken"] = next_token
+        page = analyzer.list_findings_v2(**kwargs)
+        for finding in page.get("findings", []):
+            actions.update(finding.get("action", []) or finding.get("actions", []))
+        next_token = page.get("nextToken")
+        if not next_token:
+            break
+    return actions
+
+
 def main(argv=None):
     p = argparse.ArgumentParser(
         prog="iam-shrink",
@@ -196,10 +227,20 @@ def main(argv=None):
     s.add_argument(
         "--format", choices=["report", "policy", "tf-diff"], default="report"
     )
+    s.add_argument(
+        "--analyzer-arn",
+        help="IAM Access Analyzer ARN; cross-checks its UnusedPermission findings "
+        "for --role-arn against the CloudTrail-based result (report format only)",
+    )
+    s.add_argument(
+        "--role-arn", help="Role ARN to look up in Access Analyzer, required with --analyzer-arn"
+    )
     args = p.parse_args(argv)
 
     if args.athena_table and not args.athena_output:
         p.error("--athena-table requires --athena-output")
+    if args.analyzer_arn and not args.role_arn:
+        p.error("--analyzer-arn requires --role-arn")
 
     if args.athena_table:
         events = fetch_events_via_athena(
@@ -225,6 +266,12 @@ def main(argv=None):
         print(f"\nREMOVE ({len(removable)}):")
         for a in sorted(removable):
             print(f"  ✗ {a}")
+        if args.analyzer_arn:
+            analyzer_unused = fetch_analyzer_unused_actions(args.analyzer_arn, args.role_arn)
+            extra = sorted(analyzer_unused - kept)
+            print(f"\nACCESS ANALYZER ALSO FLAGGED AS UNUSED ({len(extra)}):")
+            for a in extra:
+                print(f"  ⚠ {a}")
     return 0
 
 
