@@ -147,10 +147,10 @@ def tf_diff(role_name, kept, removable, resource_map=None):
     return "\n".join(lines)
 
 
-def fetch_role_policies(role_name):
+def fetch_role_policies(role_name, client=None):
     import boto3
 
-    iam = boto3.client("iam")
+    iam = client or boto3.client("iam")
     docs = []
     for name in iam.list_role_policies(RoleName=role_name)["PolicyNames"]:
         docs.append(
@@ -245,7 +245,9 @@ def open_pr(role_name, tf_content, run=None):
     """
     import subprocess
 
-    run = run or (lambda cmd: subprocess.run(cmd, check=True, capture_output=True, text=True))
+    run = run or (
+        lambda cmd: subprocess.run(cmd, check=True, capture_output=True, text=True)
+    )
     filename = f"{role_name}-minimized.tf"
     with open(filename, "w") as fh:
         fh.write(tf_content)
@@ -292,7 +294,10 @@ def main(argv=None):
         help="S3 URI for Athena query results, required with --athena-table",
     )
     s.add_argument(
-        "--athena-days", type=int, default=90, help="Lookback window in days (default: 90)"
+        "--athena-days",
+        type=int,
+        default=90,
+        help="Lookback window in days (default: 90)",
     )
     s.add_argument(
         "--format", choices=["report", "policy", "tf-diff"], default="report"
@@ -303,7 +308,8 @@ def main(argv=None):
         "for --role-arn against the CloudTrail-based result (report format only)",
     )
     s.add_argument(
-        "--role-arn", help="Role ARN to look up in Access Analyzer, required with --analyzer-arn"
+        "--role-arn",
+        help="Role ARN to look up in Access Analyzer, required with --analyzer-arn",
     )
     s.add_argument(
         "--open-pr",
@@ -350,7 +356,9 @@ def main(argv=None):
         for a in sorted(removable):
             print(f"  ✗ {a}")
         if args.analyzer_arn:
-            analyzer_unused = fetch_analyzer_unused_actions(args.analyzer_arn, args.role_arn)
+            analyzer_unused = fetch_analyzer_unused_actions(
+                args.analyzer_arn, args.role_arn
+            )
             extra = sorted(analyzer_unused - kept)
             print(f"\nACCESS ANALYZER ALSO FLAGGED AS UNUSED ({len(extra)}):")
             for a in extra:

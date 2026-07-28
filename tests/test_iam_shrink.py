@@ -4,6 +4,7 @@ from iam_shrink import (
     allowed_actions,
     fetch_analyzer_unused_actions,
     fetch_events_via_athena,
+    fetch_role_policies,
     minimized_policy,
     open_pr,
     shrink,
@@ -68,7 +69,12 @@ class _FakeAthenaClient:
         return {
             "ResultSet": {
                 "Rows": [
-                    {"Data": [{"VarCharValue": "eventSource"}, {"VarCharValue": "eventName"}]},
+                    {
+                        "Data": [
+                            {"VarCharValue": "eventSource"},
+                            {"VarCharValue": "eventName"},
+                        ]
+                    },
                     {
                         "Data": [
                             {"VarCharValue": "s3.amazonaws.com"},
@@ -101,6 +107,36 @@ class _FakeAnalyzerClient:
                 "nextToken": "page2",
             }
         return {"findings": [{"action": ["dynamodb:Scan"]}]}
+
+
+class _FakeIamClient:
+    def list_role_policies(self, RoleName):
+        assert RoleName == "my-app-role"
+        return {"PolicyNames": ["inline1"]}
+
+    def get_role_policy(self, RoleName, PolicyName):
+        return {"PolicyDocument": {"Statement": {"Effect": "Allow", "Action": "s3:*"}}}
+
+    def list_attached_role_policies(self, RoleName):
+        return {"AttachedPolicies": [{"PolicyArn": "arn:aws:iam::1:policy/attached"}]}
+
+    def get_policy(self, PolicyArn):
+        return {"Policy": {"DefaultVersionId": "v1"}}
+
+    def get_policy_version(self, PolicyArn, VersionId):
+        assert VersionId == "v1"
+        return {
+            "PolicyVersion": {
+                "Document": {
+                    "Statement": {"Effect": "Allow", "Action": "sqs:SendMessage"}
+                }
+            }
+        }
+
+
+def test_fetch_role_policies_combines_inline_and_attached():
+    docs = fetch_role_policies("my-app-role", client=_FakeIamClient())
+    assert allowed_actions(docs) == {"s3:*", "sqs:SendMessage"}
 
 
 def test_fetch_analyzer_unused_actions_paginates():
