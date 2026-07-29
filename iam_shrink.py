@@ -106,7 +106,9 @@ def minimized_policy(kept, resource_map=None):
         )
     for action, arns in sorted(scoped.items()):
         sid = "IamShrinkMinimized" + action.replace(":", "").replace("*", "Any")
-        statements.append({"Sid": sid, "Effect": "Allow", "Action": [action], "Resource": arns})
+        statements.append(
+            {"Sid": sid, "Effect": "Allow", "Action": [action], "Resource": arns}
+        )
     return {"Version": "2012-10-17", "Statement": statements}
 
 
@@ -151,10 +153,14 @@ def fetch_role_policies(role_name, client=None):
     iam = client or boto3.client("iam")
     docs = []
     for name in iam.list_role_policies(RoleName=role_name)["PolicyNames"]:
-        docs.append(iam.get_role_policy(RoleName=role_name, PolicyName=name)["PolicyDocument"])
+        docs.append(
+            iam.get_role_policy(RoleName=role_name, PolicyName=name)["PolicyDocument"]
+        )
     for att in iam.list_attached_role_policies(RoleName=role_name)["AttachedPolicies"]:
         pol = iam.get_policy(PolicyArn=att["PolicyArn"])["Policy"]
-        ver = iam.get_policy_version(PolicyArn=att["PolicyArn"], VersionId=pol["DefaultVersionId"])
+        ver = iam.get_policy_version(
+            PolicyArn=att["PolicyArn"], VersionId=pol["DefaultVersionId"]
+        )
         docs.append(ver["PolicyVersion"]["Document"])
     return docs
 
@@ -183,9 +189,9 @@ def fetch_events_via_athena(role_name, table, output_location, days=90, client=N
     )["QueryExecutionId"]
 
     for _ in range(60):  # ~60s at 1s/poll, plenty for a small aggregate query
-        state = athena.get_query_execution(QueryExecutionId=exec_id)["QueryExecution"]["Status"][
-            "State"
-        ]
+        state = athena.get_query_execution(QueryExecutionId=exec_id)["QueryExecution"][
+            "Status"
+        ]["State"]
         if state in ("SUCCEEDED", "FAILED", "CANCELLED"):
             break
         time.sleep(1)
@@ -239,7 +245,9 @@ def open_pr(role_name, tf_content, run=None):
     """
     import subprocess
 
-    run = run or (lambda cmd: subprocess.run(cmd, check=True, capture_output=True, text=True))
+    run = run or (
+        lambda cmd: subprocess.run(cmd, check=True, capture_output=True, text=True)
+    )
     filename = f"{role_name}-minimized.tf"
     with open(filename, "w") as fh:
         fh.write(tf_content)
@@ -291,7 +299,9 @@ def main(argv=None):
         default=90,
         help="Lookback window in days (default: 90)",
     )
-    s.add_argument("--format", choices=["report", "policy", "tf-diff"], default="report")
+    s.add_argument(
+        "--format", choices=["report", "policy", "tf-diff"], default="report"
+    )
     s.add_argument(
         "--analyzer-arn",
         help="IAM Access Analyzer ARN; cross-checks its UnusedPermission findings "
@@ -346,7 +356,9 @@ def main(argv=None):
         for a in sorted(removable):
             print(f"  ✗ {a}")
         if args.analyzer_arn:
-            analyzer_unused = fetch_analyzer_unused_actions(args.analyzer_arn, args.role_arn)
+            analyzer_unused = fetch_analyzer_unused_actions(
+                args.analyzer_arn, args.role_arn
+            )
             extra = sorted(analyzer_unused - kept)
             print(f"\nACCESS ANALYZER ALSO FLAGGED AS UNUSED ({len(extra)}):")
             for a in extra:
