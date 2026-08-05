@@ -4,6 +4,14 @@ All notable changes to this project are documented here. This file is
 maintained automatically by [release-please](https://github.com/googleapis/release-please)
 from Conventional Commit messages — do not edit it by hand.
 
+## [0.1.1](https://github.com/fabiocicerchia/iam-shrink/compare/v0.1.0...v0.1.1) (2026-08-05)
+
+
+### Bug Fixes
+
+* **pre-commit:** stop check-yaml failing on Helm templates and multi-doc manifests ([8cfb199](https://github.com/fabiocicerchia/iam-shrink/commit/8cfb1995cca024ce84972d3e6009bfac1bab13a0))
+* **security:** skip the SARIF upload on private repos ([091e284](https://github.com/fabiocicerchia/iam-shrink/commit/091e284ffea5cd75843f5df61bf5c78430f5c991))
+
 ## [0.1.0] - 2026-07-14
 
 - Initial release: CloudTrail usage → minimized IAM policies as a report,
