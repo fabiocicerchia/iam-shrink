@@ -127,9 +127,7 @@ class _FakeIamClient:
         assert VersionId == "v1"
         return {
             "PolicyVersion": {
-                "Document": {
-                    "Statement": {"Effect": "Allow", "Action": "sqs:SendMessage"}
-                }
+                "Document": {"Statement": {"Effect": "Allow", "Action": "sqs:SendMessage"}}
             }
         }
 
@@ -157,9 +155,7 @@ def test_used_action_resources_only_collects_actions_with_arns():
         },
         {"eventSource": "sqs.amazonaws.com", "eventName": "SendMessage"},
     ]
-    assert used_action_resources(events) == {
-        "s3:GetObject": {"arn:aws:s3:::my-bucket/key"}
-    }
+    assert used_action_resources(events) == {"s3:GetObject": {"arn:aws:s3:::my-bucket/key"}}
 
 
 def test_minimized_policy_narrows_resource_for_actions_with_known_arns():

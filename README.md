@@ -4,6 +4,7 @@
 [![Security](https://github.com/fabiocicerchia/iam-shrink/actions/workflows/security.yml/badge.svg)](https://github.com/fabiocicerchia/iam-shrink/actions/workflows/security.yml)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/fabiocicerchia/iam-shrink/badge)](https://securityscorecards.dev/viewer/?uri=github.com/fabiocicerchia/iam-shrink)
+[![CI carbon](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/fabiocicerchia/iam-shrink/gh-pages/badge.json)](.github/workflows/carbon-badge.yml)
 [![Release](https://img.shields.io/github/v/release/fabiocicerchia/iam-shrink)](https://github.com/fabiocicerchia/iam-shrink/releases)
 
 **CloudTrail usage → minimized IAM policies as Terraform diffs.** Compares
