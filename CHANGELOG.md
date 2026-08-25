@@ -4,6 +4,18 @@ All notable changes to this project are documented here. This file is
 maintained automatically by [release-please](https://github.com/googleapis/release-please)
 from Conventional Commit messages — do not edit it by hand.
 
+## [0.2.0](https://github.com/fabiocicerchia/iam-shrink/compare/v0.1.2...v0.2.0) (2026-08-25)
+
+
+### Features
+
+* **docs:** build the docs site in Actions and drop Read the Docs ([#43](https://github.com/fabiocicerchia/iam-shrink/issues/43)) ([7c43803](https://github.com/fabiocicerchia/iam-shrink/commit/7c438039f814856ff44a91e35fcfbf8392d67eb2))
+
+
+### Bug Fixes
+
+* **ci:** compute the next release PR after the draft is published ([#40](https://github.com/fabiocicerchia/iam-shrink/issues/40)) ([5923507](https://github.com/fabiocicerchia/iam-shrink/commit/5923507d1fb376a46062622851f0f549f7376b59))
+
 ## [0.1.2](https://github.com/fabiocicerchia/iam-shrink/compare/v0.1.1...v0.1.2) (2026-08-13)
 
 
