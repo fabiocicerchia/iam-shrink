@@ -4,6 +4,13 @@ All notable changes to this project are documented here. This file is
 maintained automatically by [release-please](https://github.com/googleapis/release-please)
 from Conventional Commit messages — do not edit it by hand.
 
+## [0.2.1](https://github.com/fabiocicerchia/iam-shrink/compare/v0.2.0...v0.2.1) (2026-08-29)
+
+
+### Bug Fixes
+
+* unblock quality and clear the Scorecard pinned-dependencies finding ([#52](https://github.com/fabiocicerchia/iam-shrink/issues/52)) ([809672e](https://github.com/fabiocicerchia/iam-shrink/commit/809672ed68439841be4cc0203cf5fca8eec6f27f))
+
 ## [0.2.0](https://github.com/fabiocicerchia/iam-shrink/compare/v0.1.2...v0.2.0) (2026-08-25)
 
 
