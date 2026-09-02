@@ -282,7 +282,8 @@ def open_pr(role_name, tf_content, run=None):
     return getattr(created, "stdout", "").strip()
 
 
-def main(argv=None):
+def build_parser():
+    """The iam-shrink command line."""
     parser = argparse.ArgumentParser(
         prog="iam-shrink",
         description=__doc__,
@@ -326,8 +327,11 @@ def main(argv=None):
         help="Commit the tf-diff on a new branch and open a PR with `gh` "
         "(run from inside the target IaC repo)",
     )
-    args = parser.parse_args(argv)
+    return parser
 
+
+def reject_conflicting_flags(parser, args):
+    """Flag combinations argparse cannot express. Exits 2 through the parser."""
     if args.athena_table and not args.athena_output:
         parser.error("--athena-table requires --athena-output")
     if args.analyzer_arn and not args.role_arn:
@@ -335,6 +339,34 @@ def main(argv=None):
     if args.open_pr and args.format != "tf-diff":
         parser.error("--open-pr requires --format tf-diff")
 
+
+def render_report(role_name, allowed, used, kept, removable):
+    """The default human-readable KEEP/REMOVE listing."""
+    print(f"# iam-shrink — role {role_name}")
+    print(f"allowed patterns: {len(allowed)}, used actions: {len(used)}")
+    print(f"\nKEEP ({len(kept)}):")
+    for a in sorted(kept):
+        print(f"  ✓ {a}")
+    print(f"\nREMOVE ({len(removable)}):")
+    for a in sorted(removable):
+        print(f"  ✗ {a}")
+
+
+def render_analyzer_crosscheck(analyzer_arn, role_arn, kept):
+    """Actions Access Analyzer also calls unused, on top of the CloudTrail result."""
+    extra = sorted(fetch_analyzer_unused_actions(analyzer_arn, role_arn) - kept)
+    print(f"\nACCESS ANALYZER ALSO FLAGGED AS UNUSED ({len(extra)}):")
+    for a in extra:
+        print(f"  ⚠ {a}")
+
+
+def main(argv=None):
+    parser = build_parser()
+    args = parser.parse_args(argv)
+    reject_conflicting_flags(parser, args)
+
+    # Kept inline: an extracted loader adds a frame to the traceback a missing
+    # --usage file already raises, which the recorded baseline reads as drift.
     if args.athena_table:
         events = fetch_events_via_athena(
             args.role_name, args.athena_table, args.athena_output, args.athena_days
@@ -356,20 +388,9 @@ def main(argv=None):
             pr_url = open_pr(args.role_name, diff)
             print(pr_url, file=sys.stderr)
     else:
-        print(f"# iam-shrink — role {args.role_name}")
-        print(f"allowed patterns: {len(allowed)}, used actions: {len(used)}")
-        print(f"\nKEEP ({len(kept)}):")
-        for a in sorted(kept):
-            print(f"  ✓ {a}")
-        print(f"\nREMOVE ({len(removable)}):")
-        for a in sorted(removable):
-            print(f"  ✗ {a}")
+        render_report(args.role_name, allowed, used, kept, removable)
         if args.analyzer_arn:
-            analyzer_unused = fetch_analyzer_unused_actions(args.analyzer_arn, args.role_arn)
-            extra = sorted(analyzer_unused - kept)
-            print(f"\nACCESS ANALYZER ALSO FLAGGED AS UNUSED ({len(extra)}):")
-            for a in extra:
-                print(f"  ⚠ {a}")
+            render_analyzer_crosscheck(args.analyzer_arn, args.role_arn, kept)
     return 0
 
 
