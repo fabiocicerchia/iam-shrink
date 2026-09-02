@@ -246,14 +246,19 @@ def fetch_analyzer_unused_actions(analyzer_arn, role_arn, client=None):
     return actions
 
 
+def _run_checked(cmd):
+    """Run a command and raise on a non-zero exit; open_pr's default runner."""
+    import subprocess
+
+    return subprocess.run(cmd, check=True, capture_output=True, text=True)
+
+
 def open_pr(role_name, tf_content, run=None):
     """Write the tf-diff, commit it on a new branch, and open a PR with `gh`.
 
     Assumes it's run inside the IaC repo that should receive the change.
     """
-    import subprocess
-
-    run = run or (lambda cmd: subprocess.run(cmd, check=True, capture_output=True, text=True))
+    run = run or _run_checked
     filename = f"{role_name}-minimized.tf"
     with open(filename, "w") as fh:
         fh.write(tf_content)
