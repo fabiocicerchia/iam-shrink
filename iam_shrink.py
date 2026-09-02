@@ -16,6 +16,10 @@ import fnmatch
 import json
 import sys
 
+# The AWS policy language version every emitted document carries; not this tool's.
+POLICY_VERSION = "2012-10-17"
+SID_PREFIX = "IamShrinkMinimized"
+
 # CloudTrail eventSource/eventName -> IAM action (subset; grows over time)
 EVENT_TO_ACTION = {
     ("s3.amazonaws.com", "GetObject"): "s3:GetObject",
@@ -26,6 +30,23 @@ EVENT_TO_ACTION = {
     ("sqs.amazonaws.com", "SendMessage"): "sqs:SendMessage",
     ("sqs.amazonaws.com", "ReceiveMessage"): "sqs:ReceiveMessage",
 }
+
+# Athena / CloudTrail Lake. The poll budget is ATTEMPTS x INTERVAL seconds,
+# plenty for a small aggregate query.
+DEFAULT_LOOKBACK_DAYS = 90
+ATHENA_SUCCEEDED = "SUCCEEDED"
+ATHENA_TERMINAL_STATES = (ATHENA_SUCCEEDED, "FAILED", "CANCELLED")
+ATHENA_POLL_ATTEMPTS = 60
+ATHENA_POLL_INTERVAL_S = 1
+
+# The exact query documented in the README, parameterized by role + window.
+ATHENA_QUERY = """\
+SELECT eventsource AS eventSource, eventname AS eventName
+FROM {table}
+WHERE useridentity.sessioncontext.sessionissuer.arn LIKE '%{role_name}'
+  AND eventtime > date_add('day', -{days}, now())
+GROUP BY 1, 2
+"""
 
 
 def used_actions(events):
@@ -98,16 +119,16 @@ def minimized_policy(kept, resource_map=None):
     if wildcard:
         statements.append(
             {
-                "Sid": "IamShrinkMinimized",
+                "Sid": SID_PREFIX,
                 "Effect": "Allow",
                 "Action": wildcard,
                 "Resource": "*",
             }
         )
     for action, arns in sorted(scoped.items()):
-        sid = "IamShrinkMinimized" + action.replace(":", "").replace("*", "Any")
+        sid = SID_PREFIX + action.replace(":", "").replace("*", "Any")
         statements.append({"Sid": sid, "Effect": "Allow", "Action": [action], "Resource": arns})
-    return {"Version": "2012-10-17", "Statement": statements}
+    return {"Version": POLICY_VERSION, "Statement": statements}
 
 
 def tf_diff(role_name, kept, removable, resource_map=None):
@@ -127,7 +148,7 @@ def tf_diff(role_name, kept, removable, resource_map=None):
         f'  name = "{role_name}-minimized"',
         f"  role = aws_iam_role.{role_name.replace('-', '_')}.id",
         "  policy = jsonencode({",
-        '    Version = "2012-10-17"',
+        f'    Version = "{POLICY_VERSION}"',
         "    Statement = [",
     ]
     for actions, resource in statements:
@@ -159,17 +180,9 @@ def fetch_role_policies(role_name, client=None):
     return docs
 
 
-# The exact query documented in the README, parameterized by role + window.
-ATHENA_QUERY = """\
-SELECT eventsource AS eventSource, eventname AS eventName
-FROM {table}
-WHERE useridentity.sessioncontext.sessionissuer.arn LIKE '%{role_name}'
-  AND eventtime > date_add('day', -{days}, now())
-GROUP BY 1, 2
-"""
-
-
-def fetch_events_via_athena(role_name, table, output_location, days=90, client=None):
+def fetch_events_via_athena(
+    role_name, table, output_location, days=DEFAULT_LOOKBACK_DAYS, client=None
+):
     """Run the CloudTrail Lake query from the README and return CloudTrail-shaped events."""
     import time
 
@@ -182,14 +195,14 @@ def fetch_events_via_athena(role_name, table, output_location, days=90, client=N
         ResultConfiguration={"OutputLocation": output_location},
     )["QueryExecutionId"]
 
-    for _ in range(60):  # ~60s at 1s/poll, plenty for a small aggregate query
+    for _ in range(ATHENA_POLL_ATTEMPTS):
         state = athena.get_query_execution(QueryExecutionId=exec_id)["QueryExecution"]["Status"][
             "State"
         ]
-        if state in ("SUCCEEDED", "FAILED", "CANCELLED"):
+        if state in ATHENA_TERMINAL_STATES:
             break
-        time.sleep(1)
-    if state != "SUCCEEDED":
+        time.sleep(ATHENA_POLL_INTERVAL_S)
+    if state != ATHENA_SUCCEEDED:
         raise RuntimeError(f"Athena query {exec_id} ended in state {state}")
 
     rows = athena.get_query_results(QueryExecutionId=exec_id)["ResultSet"]["Rows"]
@@ -288,8 +301,8 @@ def main(argv=None):
     s.add_argument(
         "--athena-days",
         type=int,
-        default=90,
-        help="Lookback window in days (default: 90)",
+        default=DEFAULT_LOOKBACK_DAYS,
+        help=f"Lookback window in days (default: {DEFAULT_LOOKBACK_DAYS})",
     )
     s.add_argument("--format", choices=["report", "policy", "tf-diff"], default="report")
     s.add_argument(
