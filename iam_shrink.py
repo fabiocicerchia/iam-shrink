@@ -49,28 +49,25 @@ GROUP BY 1, 2
 """
 
 
+def event_action(event):
+    """The IAM action a CloudTrail event maps to (best-effort, else source:Name)."""
+    source = event.get("eventSource", "")
+    name = event.get("eventName", "")
+    return EVENT_TO_ACTION.get((source, name), f"{source.split('.')[0]}:{name}")
+
+
 def used_actions(events):
     """Map CloudTrail events to IAM actions (best-effort, else source:Name)."""
-    actions = set()
-    for e in events:
-        key = (e.get("eventSource", ""), e.get("eventName", ""))
-        if key in EVENT_TO_ACTION:
-            actions.add(EVENT_TO_ACTION[key])
-        else:
-            service = key[0].split(".")[0]
-            actions.add(f"{service}:{key[1]}")
-    return actions
+    return {event_action(e) for e in events}
 
 
 def used_action_resources(events):
     """Map used action -> resource ARNs, where CloudTrail recorded them on the event."""
     mapping = {}
     for e in events:
-        key = (e.get("eventSource", ""), e.get("eventName", ""))
-        action = EVENT_TO_ACTION.get(key, f"{key[0].split('.')[0]}:{key[1]}")
         arns = {r["ARN"] for r in e.get("resources", []) if r.get("ARN")}
         if arns:
-            mapping.setdefault(action, set()).update(arns)
+            mapping.setdefault(event_action(e), set()).update(arns)
     return mapping
 
 
@@ -140,13 +137,16 @@ def tf_diff(role_name, kept, removable, resource_map=None):
         arn_list = "[" + ", ".join(f'"{a}"' for a in arns) + "]"
         statements.append(([action], arn_list))
 
+    # The resource label and the role reference must stay the same identifier,
+    # or the emitted snippet points at a resource that does not exist.
+    tf_name = role_name.replace("-", "_")
     lines = [
         f'# iam-shrink suggestion for role "{role_name}"',
         f"# {len(removable)} unused action pattern(s) removed, {len(kept)} kept",
         "",
-        f'resource "aws_iam_role_policy" "{role_name.replace("-", "_")}_minimized" {{',
+        f'resource "aws_iam_role_policy" "{tf_name}_minimized" {{',
         f'  name = "{role_name}-minimized"',
-        f"  role = aws_iam_role.{role_name.replace('-', '_')}.id",
+        f"  role = aws_iam_role.{tf_name}.id",
         "  policy = jsonencode({",
         f'    Version = "{POLICY_VERSION}"',
         "    Statement = [",
