@@ -13,4 +13,5 @@ RUN adduser --disabled-password --uid 10001 app
 COPY --from=build /dist/*.whl /tmp/
 RUN pip install --no-cache-dir /tmp/*.whl && rm -rf /tmp/*.whl
 USER app
+# hardener: run this image with `docker run --read-only` for a read-only rootfs
 ENTRYPOINT ["iam-shrink"]

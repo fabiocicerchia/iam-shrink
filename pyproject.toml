@@ -35,5 +35,10 @@ iam-shrink = "iam_shrink:main"
 [tool.setuptools]
 py-modules = ["iam_shrink"]
 
+[tool.pytest.ini_options]
+# Put the checkout ahead of site-packages: without this `pytest -q` from a
+# clean clone imports an installed iam_shrink instead of the one being edited.
+pythonpath = ["."]
+
 [tool.ruff]
 line-length = 100
