@@ -4,6 +4,13 @@ All notable changes to this project are documented here. This file is
 maintained automatically by [release-please](https://github.com/googleapis/release-please)
 from Conventional Commit messages — do not edit it by hand.
 
+## [0.2.2](https://github.com/fabiocicerchia/iam-shrink/compare/v0.2.1...v0.2.2) (2026-09-04)
+
+
+### Bug Fixes
+
+* **ci:** pin the editorconfig-checker binary version ([#67](https://github.com/fabiocicerchia/iam-shrink/issues/67)) ([989594c](https://github.com/fabiocicerchia/iam-shrink/commit/989594c6e190dc332a470700990d76f316f3be78))
+
 ## [0.2.1](https://github.com/fabiocicerchia/iam-shrink/compare/v0.2.0...v0.2.1) (2026-08-29)
 
 
