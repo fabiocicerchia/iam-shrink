@@ -14,7 +14,22 @@ Pipeline:
 import argparse
 import fnmatch
 import json
+import subprocess
 import sys
+import time
+from collections.abc import Callable
+from pathlib import Path
+from typing import Any
+
+# The AWS-shaped JSON this tool reads: CloudTrail events, IAM policy documents,
+# and whatever the boto3 clients hand back.
+Json = dict[str, Any]
+# action -> the resource ARNs CloudTrail recorded it against.
+ResourceMap = dict[str, set[str]]
+# The boto3 client for a service, or the stub a test passes in its place.
+Client = Any
+# The subprocess runner open_pr shells out through; the tests replace it.
+Runner = Callable[[list[str]], subprocess.CompletedProcess[str]]
 
 # The AWS policy language version every emitted document carries; not this tool's.
 POLICY_VERSION = "2012-10-17"
@@ -49,19 +64,19 @@ GROUP BY 1, 2
 """
 
 
-def event_action(event):
+def event_action(event: Json) -> str:
     """The IAM action a CloudTrail event maps to (best-effort, else source:Name)."""
     source = event.get("eventSource", "")
     name = event.get("eventName", "")
     return EVENT_TO_ACTION.get((source, name), f"{source.split('.')[0]}:{name}")
 
 
-def used_actions(events):
+def used_actions(events: list[Json]) -> set[str]:
     """Map CloudTrail events to IAM actions (best-effort, else source:Name)."""
     return {event_action(e) for e in events}
 
 
-def used_action_resources(events):
+def used_action_resources(events: list[Json]) -> ResourceMap:
     """Map used action -> resource ARNs, where CloudTrail recorded them on the event."""
     mapping = {}
     for e in events:
@@ -71,7 +86,7 @@ def used_action_resources(events):
     return mapping
 
 
-def allowed_actions(policy_documents):
+def allowed_actions(policy_documents: list[Json]) -> set[str]:
     """Flatten Allow statements into a set of action patterns."""
     patterns = set()
     for doc in policy_documents:
@@ -86,7 +101,7 @@ def allowed_actions(policy_documents):
     return patterns
 
 
-def shrink(allowed_patterns, used):
+def shrink(allowed_patterns: set[str], used: set[str]) -> tuple[set[str], set[str]]:
     """Split allowed patterns into (kept, removable).
 
     A pattern is kept iff at least one observed action matches it; wildcards
@@ -102,7 +117,7 @@ def shrink(allowed_patterns, used):
     return kept, removable
 
 
-def _split_by_resource(kept, resource_map):
+def _split_by_resource(kept: set[str], resource_map: ResourceMap | None) -> tuple[list[str], dict[str, list[str]]]:
     """kept actions with a known resource ARN vs. the rest (stay on Resource: "*")."""
     resource_map = resource_map or {}
     scoped = {a: sorted(resource_map[a]) for a in kept if resource_map.get(a)}
@@ -110,7 +125,7 @@ def _split_by_resource(kept, resource_map):
     return wildcard, scoped
 
 
-def minimized_policy(kept, resource_map=None):
+def minimized_policy(kept: set[str], resource_map: ResourceMap | None = None) -> Json:
     wildcard, scoped = _split_by_resource(kept, resource_map)
     statements = []
     if wildcard:
@@ -128,7 +143,7 @@ def minimized_policy(kept, resource_map=None):
     return {"Version": POLICY_VERSION, "Statement": statements}
 
 
-def tf_diff(role_name, kept, removable, resource_map=None):
+def tf_diff(role_name: str, kept: set[str], removable: set[str], resource_map: ResourceMap | None = None) -> str:
     wildcard, scoped = _split_by_resource(kept, resource_map)
     statements = []
     if wildcard:
@@ -166,8 +181,10 @@ def tf_diff(role_name, kept, removable, resource_map=None):
     return "\n".join(lines)
 
 
-def fetch_role_policies(role_name, client=None):
-    import boto3
+def fetch_role_policies(role_name: str, client: Client | None = None) -> list[Json]:
+    # Only the AWS-reading paths need boto3; --tf-diff and the report do not,
+    # and must work without it installed.
+    import boto3  # noqa: PLC0415
 
     iam = client or boto3.client("iam")
     docs = []
@@ -182,12 +199,17 @@ def fetch_role_policies(role_name, client=None):
 
 
 def fetch_events_via_athena(
-    role_name, table, output_location, days=DEFAULT_LOOKBACK_DAYS, client=None
-):
+    role_name: str,
+    table: str,
+    output_location: str,
+    days: int = DEFAULT_LOOKBACK_DAYS,
+    client: Client | None = None,
+) -> list[Json]:
     """Run the CloudTrail Lake query from the README and return CloudTrail-shaped events."""
-    import time
 
-    import boto3
+    # Only the AWS-reading paths need boto3; --tf-diff and the report do not,
+    # and must work without it installed.
+    import boto3  # noqa: PLC0415
 
     athena = client or boto3.client("athena")
     query = ATHENA_QUERY.format(table=table, role_name=role_name, days=days)
@@ -197,9 +219,7 @@ def fetch_events_via_athena(
     )["QueryExecutionId"]
 
     for _ in range(ATHENA_POLL_ATTEMPTS):
-        state = athena.get_query_execution(QueryExecutionId=exec_id)["QueryExecution"]["Status"][
-            "State"
-        ]
+        state = athena.get_query_execution(QueryExecutionId=exec_id)["QueryExecution"]["Status"]["State"]
         if state in ATHENA_TERMINAL_STATES:
             break
         time.sleep(ATHENA_POLL_INTERVAL_S)
@@ -211,18 +231,20 @@ def fetch_events_via_athena(
     events = []
     for row in rows[1:]:
         values = [c.get("VarCharValue") for c in row["Data"]]
-        events.append(dict(zip(header, values)))
+        events.append(dict(zip(header, values, strict=True)))
     return events
 
 
-def fetch_analyzer_unused_actions(analyzer_arn, role_arn, client=None):
+def fetch_analyzer_unused_actions(analyzer_arn: str, role_arn: str, client: Client | None = None) -> set[str]:
     """IAM Access Analyzer's own UNUSED_PERMISSION findings for a role.
 
     A second, independent signal for "unused": Access Analyzer sees actions
     CloudTrail doesn't log by default (many List/Describe/Get calls), so this
     is a cross-check on top of the CloudTrail-based shrink, not a replacement.
     """
-    import boto3
+    # Only the AWS-reading paths need boto3; --tf-diff and the report do not,
+    # and must work without it installed.
+    import boto3  # noqa: PLC0415
 
     analyzer = client or boto3.client("accessanalyzer")
     actions = set()
@@ -246,22 +268,21 @@ def fetch_analyzer_unused_actions(analyzer_arn, role_arn, client=None):
     return actions
 
 
-def _run_checked(cmd):
+def _run_checked(cmd: list[str]) -> subprocess.CompletedProcess[str]:
     """Run a command and raise on a non-zero exit; open_pr's default runner."""
-    import subprocess
+    # Fixed argv, no shell: `cmd` is built by open_pr from constants and a
+    # role name this tool was given.
+    return subprocess.run(cmd, check=True, capture_output=True, text=True)  # noqa: S603
 
-    return subprocess.run(cmd, check=True, capture_output=True, text=True)
 
-
-def open_pr(role_name, tf_content, run=None):
+def open_pr(role_name: str, tf_content: str, run: Runner | None = None) -> str:
     """Write the tf-diff, commit it on a new branch, and open a PR with `gh`.
 
     Assumes it's run inside the IaC repo that should receive the change.
     """
     run = run or _run_checked
     filename = f"{role_name}-minimized.tf"
-    with open(filename, "w") as fh:
-        fh.write(tf_content)
+    Path(filename).write_text(tf_content)
 
     branch = f"iam-shrink/{role_name}"
     run(["git", "checkout", "-b", branch])
@@ -282,7 +303,7 @@ def open_pr(role_name, tf_content, run=None):
     return getattr(created, "stdout", "").strip()
 
 
-def build_parser():
+def build_parser() -> argparse.ArgumentParser:
     """The iam-shrink command line."""
     parser = argparse.ArgumentParser(
         prog="iam-shrink",
@@ -324,13 +345,12 @@ def build_parser():
     analyze.add_argument(
         "--open-pr",
         action="store_true",
-        help="Commit the tf-diff on a new branch and open a PR with `gh` "
-        "(run from inside the target IaC repo)",
+        help="Commit the tf-diff on a new branch and open a PR with `gh` (run from inside the target IaC repo)",
     )
     return parser
 
 
-def reject_conflicting_flags(parser, args):
+def reject_conflicting_flags(parser: argparse.ArgumentParser, args: argparse.Namespace) -> None:
     """Flag combinations argparse cannot express. Exits 2 through the parser."""
     if args.athena_table and not args.athena_output:
         parser.error("--athena-table requires --athena-output")
@@ -340,27 +360,30 @@ def reject_conflicting_flags(parser, args):
         parser.error("--open-pr requires --format tf-diff")
 
 
-def render_report(role_name, allowed, used, kept, removable):
-    """The default human-readable KEEP/REMOVE listing."""
-    print(f"# iam-shrink — role {role_name}")
-    print(f"allowed patterns: {len(allowed)}, used actions: {len(used)}")
-    print(f"\nKEEP ({len(kept)}):")
-    for a in sorted(kept):
-        print(f"  ✓ {a}")
-    print(f"\nREMOVE ({len(removable)}):")
-    for a in sorted(removable):
-        print(f"  ✗ {a}")
+def render_report(role_name: str, allowed: set[str], used: set[str], kept: set[str], removable: set[str]) -> str:
+    """The default human-readable KEEP/REMOVE listing.
+
+    Returns the text rather than printing it, so a test can read the report
+    without capsys and main has one place that writes to stdout.
+    """
+    lines = [
+        f"# iam-shrink — role {role_name}",
+        f"allowed patterns: {len(allowed)}, used actions: {len(used)}",
+        f"\nKEEP ({len(kept)}):",
+        *(f"  ✓ {a}" for a in sorted(kept)),
+        f"\nREMOVE ({len(removable)}):",
+        *(f"  ✗ {a}" for a in sorted(removable)),
+    ]
+    return "\n".join(lines)
 
 
-def render_analyzer_crosscheck(analyzer_arn, role_arn, kept):
+def render_analyzer_crosscheck(analyzer_arn: str, role_arn: str, kept: set[str]) -> str:
     """Actions Access Analyzer also calls unused, on top of the CloudTrail result."""
     extra = sorted(fetch_analyzer_unused_actions(analyzer_arn, role_arn) - kept)
-    print(f"\nACCESS ANALYZER ALSO FLAGGED AS UNUSED ({len(extra)}):")
-    for a in extra:
-        print(f"  ⚠ {a}")
+    return "\n".join([f"\nACCESS ANALYZER ALSO FLAGGED AS UNUSED ({len(extra)}):", *(f"  ⚠ {a}" for a in extra)])
 
 
-def main(argv=None):
+def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
     reject_conflicting_flags(parser, args)
@@ -368,12 +391,9 @@ def main(argv=None):
     # Kept inline: an extracted loader adds a frame to the traceback a missing
     # --usage file already raises, which the recorded baseline reads as drift.
     if args.athena_table:
-        events = fetch_events_via_athena(
-            args.role_name, args.athena_table, args.athena_output, args.athena_days
-        )
+        events = fetch_events_via_athena(args.role_name, args.athena_table, args.athena_output, args.athena_days)
     else:
-        with open(args.usage) as fh:
-            events = json.load(fh)
+        events = json.loads(Path(args.usage).read_text())
     used = used_actions(events)
     resource_map = used_action_resources(events)
     allowed = allowed_actions(fetch_role_policies(args.role_name))
@@ -383,14 +403,14 @@ def main(argv=None):
         json.dump(minimized_policy(kept, resource_map), sys.stdout, indent=2)
     elif args.format == "tf-diff":
         diff = tf_diff(args.role_name, kept, removable, resource_map)
-        print(diff)
+        print(diff)  # noqa: T201 — the tool's output
         if args.open_pr:
             pr_url = open_pr(args.role_name, diff)
-            print(pr_url, file=sys.stderr)
+            print(pr_url, file=sys.stderr)  # noqa: T201 — the PR URL, on stderr
     else:
-        render_report(args.role_name, allowed, used, kept, removable)
+        print(render_report(args.role_name, allowed, used, kept, removable))  # noqa: T201 — the tool's output
         if args.analyzer_arn:
-            render_analyzer_crosscheck(args.analyzer_arn, args.role_arn, kept)
+            print(render_analyzer_crosscheck(args.analyzer_arn, args.role_arn, kept))  # noqa: T201
     return 0
 
 
