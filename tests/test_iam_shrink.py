@@ -1,9 +1,11 @@
 import os
+import subprocess
 from pathlib import Path
 
 import pytest
 
 from iam_shrink import (
+    Json,
     allowed_actions,
     fetch_analyzer_unused_actions,
     fetch_events_via_athena,
@@ -56,19 +58,20 @@ def test_outputs_are_deterministic() -> None:
 
 
 class _FakeAthenaClient:
+    # The argument names are boto3's, which is why they are not snake_case.
     def __init__(self) -> None:
-        self.query = None
+        self.query: str = ""
 
-    def start_query_execution(self, QueryString, ResultConfiguration):
+    def start_query_execution(self, QueryString: str, ResultConfiguration: dict[str, str]) -> Json:
         self.query = QueryString
         assert ResultConfiguration["OutputLocation"] == "s3://bucket/out/"
         return {"QueryExecutionId": "abc123"}
 
-    def get_query_execution(self, QueryExecutionId):
+    def get_query_execution(self, QueryExecutionId: str) -> Json:
         assert QueryExecutionId == "abc123"
         return {"QueryExecution": {"Status": {"State": "SUCCEEDED"}}}
 
-    def get_query_results(self, QueryExecutionId):
+    def get_query_results(self, QueryExecutionId: str) -> Json:
         return {
             "ResultSet": {
                 "Rows": [
@@ -99,7 +102,7 @@ def test_fetch_events_via_athena_runs_query_and_parses_rows() -> None:
 
 
 class _FakeAnalyzerClient:
-    def list_findings_v2(self, analyzerArn, filter, nextToken=None):
+    def list_findings_v2(self, analyzerArn: str, filter: Json, nextToken: str | None = None) -> Json:
         assert analyzerArn == "arn:aws:access-analyzer:us-east-1:1:analyzer/x"
         assert filter["resource"]["eq"] == ["arn:aws:iam::1:role/my-app-role"]
         if nextToken is None:
@@ -111,20 +114,20 @@ class _FakeAnalyzerClient:
 
 
 class _FakeIamClient:
-    def list_role_policies(self, RoleName):
+    def list_role_policies(self, RoleName: str) -> Json:
         assert RoleName == "my-app-role"
         return {"PolicyNames": ["inline1"]}
 
-    def get_role_policy(self, RoleName, PolicyName):
+    def get_role_policy(self, RoleName: str, PolicyName: str) -> Json:
         return {"PolicyDocument": {"Statement": {"Effect": "Allow", "Action": "s3:*"}}}
 
-    def list_attached_role_policies(self, RoleName):
+    def list_attached_role_policies(self, RoleName: str) -> Json:
         return {"AttachedPolicies": [{"PolicyArn": "arn:aws:iam::1:policy/attached"}]}
 
-    def get_policy(self, PolicyArn):
+    def get_policy(self, PolicyArn: str) -> Json:
         return {"Policy": {"DefaultVersionId": "v1"}}
 
-    def get_policy_version(self, PolicyArn, VersionId):
+    def get_policy_version(self, PolicyArn: str, VersionId: str) -> Json:
         assert VersionId == "v1"
         return {"PolicyVersion": {"Document": {"Statement": {"Effect": "Allow", "Action": "sqs:SendMessage"}}}}
 
@@ -172,14 +175,11 @@ def test_tf_diff_narrows_resource_for_actions_with_known_arns() -> None:
 
 def test_open_pr_writes_file_and_shells_out_in_order(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.chdir(tmp_path)
-    calls = []
+    calls: list[list[str]] = []
 
-    class _Result:
-        stdout = "https://github.com/org/repo/pull/1\n"
-
-    def fake_run(cmd):
+    def fake_run(cmd: list[str]) -> subprocess.CompletedProcess[str]:
         calls.append(cmd)
-        return _Result()
+        return subprocess.CompletedProcess(cmd, 0, stdout="https://github.com/org/repo/pull/1\n")
 
     url = open_pr("my-app-role", "# tf content", run=fake_run)
 
