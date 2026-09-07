@@ -1,4 +1,7 @@
 import os
+from pathlib import Path
+
+import pytest
 
 from iam_shrink import (
     allowed_actions,
@@ -14,7 +17,7 @@ from iam_shrink import (
 )
 
 
-def test_event_mapping_known_and_fallback():
+def test_event_mapping_known_and_fallback() -> None:
     events = [
         {"eventSource": "s3.amazonaws.com", "eventName": "GetObject"},
         {"eventSource": "lambda.amazonaws.com", "eventName": "Invoke"},
@@ -22,7 +25,7 @@ def test_event_mapping_known_and_fallback():
     assert used_actions(events) == {"s3:GetObject", "lambda:Invoke"}
 
 
-def test_allowed_flattening_handles_string_and_dict_statements():
+def test_allowed_flattening_handles_string_and_dict_statements() -> None:
     docs = [
         {"Statement": {"Effect": "Allow", "Action": "s3:*"}},
         {
@@ -35,7 +38,7 @@ def test_allowed_flattening_handles_string_and_dict_statements():
     assert allowed_actions(docs) == {"s3:*", "sqs:SendMessage"}
 
 
-def test_shrink_narrows_wildcards_and_finds_unused():
+def test_shrink_narrows_wildcards_and_finds_unused() -> None:
     kept, removable = shrink(
         {"s3:*", "dynamodb:*", "sqs:SendMessage"},
         {"s3:GetObject", "s3:PutObject", "sqs:SendMessage"},
@@ -44,7 +47,7 @@ def test_shrink_narrows_wildcards_and_finds_unused():
     assert removable == {"dynamodb:*"}
 
 
-def test_outputs_are_deterministic():
+def test_outputs_are_deterministic() -> None:
     policy = minimized_policy({"b:Two", "a:One"})
     assert policy["Statement"][0]["Action"] == ["a:One", "b:Two"]
     diff = tf_diff("my-role", {"s3:GetObject"}, {"dynamodb:*"})
@@ -53,7 +56,7 @@ def test_outputs_are_deterministic():
 
 
 class _FakeAthenaClient:
-    def __init__(self):
+    def __init__(self) -> None:
         self.query = None
 
     def start_query_execution(self, QueryString, ResultConfiguration):
@@ -86,11 +89,9 @@ class _FakeAthenaClient:
         }
 
 
-def test_fetch_events_via_athena_runs_query_and_parses_rows():
+def test_fetch_events_via_athena_runs_query_and_parses_rows() -> None:
     client = _FakeAthenaClient()
-    events = fetch_events_via_athena(
-        "my-app-role", "cloudtrail_logs", "s3://bucket/out/", days=30, client=client
-    )
+    events = fetch_events_via_athena("my-app-role", "cloudtrail_logs", "s3://bucket/out/", days=30, client=client)
     assert events == [{"eventSource": "s3.amazonaws.com", "eventName": "GetObject"}]
     assert "cloudtrail_logs" in client.query
     assert "my-app-role" in client.query
@@ -125,19 +126,15 @@ class _FakeIamClient:
 
     def get_policy_version(self, PolicyArn, VersionId):
         assert VersionId == "v1"
-        return {
-            "PolicyVersion": {
-                "Document": {"Statement": {"Effect": "Allow", "Action": "sqs:SendMessage"}}
-            }
-        }
+        return {"PolicyVersion": {"Document": {"Statement": {"Effect": "Allow", "Action": "sqs:SendMessage"}}}}
 
 
-def test_fetch_role_policies_combines_inline_and_attached():
+def test_fetch_role_policies_combines_inline_and_attached() -> None:
     docs = fetch_role_policies("my-app-role", client=_FakeIamClient())
     assert allowed_actions(docs) == {"s3:*", "sqs:SendMessage"}
 
 
-def test_fetch_analyzer_unused_actions_paginates():
+def test_fetch_analyzer_unused_actions_paginates() -> None:
     actions = fetch_analyzer_unused_actions(
         "arn:aws:access-analyzer:us-east-1:1:analyzer/x",
         "arn:aws:iam::1:role/my-app-role",
@@ -146,7 +143,7 @@ def test_fetch_analyzer_unused_actions_paginates():
     assert actions == {"s3:ListBucket", "dynamodb:Scan"}
 
 
-def test_used_action_resources_only_collects_actions_with_arns():
+def test_used_action_resources_only_collects_actions_with_arns() -> None:
     events = [
         {
             "eventSource": "s3.amazonaws.com",
@@ -158,7 +155,7 @@ def test_used_action_resources_only_collects_actions_with_arns():
     assert used_action_resources(events) == {"s3:GetObject": {"arn:aws:s3:::my-bucket/key"}}
 
 
-def test_minimized_policy_narrows_resource_for_actions_with_known_arns():
+def test_minimized_policy_narrows_resource_for_actions_with_known_arns() -> None:
     resource_map = {"s3:GetObject": {"arn:aws:s3:::my-bucket/key"}}
     policy = minimized_policy({"s3:GetObject", "sqs:SendMessage"}, resource_map)
     by_action = {tuple(s["Action"]): s["Resource"] for s in policy["Statement"]}
@@ -166,14 +163,14 @@ def test_minimized_policy_narrows_resource_for_actions_with_known_arns():
     assert by_action[("sqs:SendMessage",)] == "*"
 
 
-def test_tf_diff_narrows_resource_for_actions_with_known_arns():
+def test_tf_diff_narrows_resource_for_actions_with_known_arns() -> None:
     resource_map = {"s3:GetObject": {"arn:aws:s3:::my-bucket/key"}}
     diff = tf_diff("my-role", {"s3:GetObject", "sqs:SendMessage"}, set(), resource_map)
     assert '"arn:aws:s3:::my-bucket/key"' in diff
     assert 'Resource = "*"' in diff
 
 
-def test_open_pr_writes_file_and_shells_out_in_order(tmp_path, monkeypatch):
+def test_open_pr_writes_file_and_shells_out_in_order(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.chdir(tmp_path)
     calls = []
 
