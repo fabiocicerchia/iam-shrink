@@ -78,9 +78,10 @@ def used_actions(events: list[Json]) -> set[str]:
 
 def used_action_resources(events: list[Json]) -> ResourceMap:
     """Map used action -> resource ARNs, where CloudTrail recorded them on the event."""
-    mapping = {}
+    mapping: ResourceMap = {}
     for e in events:
-        arns = {r["ARN"] for r in e.get("resources", []) if r.get("ARN")}
+        resources: list[Json] = e.get("resources", [])
+        arns = {str(r["ARN"]) for r in resources if r.get("ARN")}
         if arns:
             mapping.setdefault(event_action(e), set()).update(arns)
     return mapping
@@ -88,15 +89,17 @@ def used_action_resources(events: list[Json]) -> ResourceMap:
 
 def allowed_actions(policy_documents: list[Json]) -> set[str]:
     """Flatten Allow statements into a set of action patterns."""
-    patterns = set()
+    patterns: set[str] = set()
     for doc in policy_documents:
-        statements = doc.get("Statement", [])
-        if isinstance(statements, dict):
-            statements = [statements]
+        # A policy document's Statement is an object when there is one of them
+        # and a list when there are several; both are legal IAM.
+        raw: Json | list[Json] = doc.get("Statement", [])
+        statements: list[Json] = [raw] if isinstance(raw, dict) else raw
         for statement in statements:
             if statement.get("Effect") != "Allow":
                 continue
-            actions = statement.get("Action", [])
+            # Action has the same one-or-many shape as Statement.
+            actions: str | list[str] = statement.get("Action", [])
             patterns.update([actions] if isinstance(actions, str) else actions)
     return patterns
 
@@ -107,7 +110,8 @@ def shrink(allowed_patterns: set[str], used: set[str]) -> tuple[set[str], set[st
     A pattern is kept iff at least one observed action matches it; wildcards
     are then narrowed to the concrete used actions they matched.
     """
-    kept, removable = set(), set()
+    kept: set[str] = set()
+    removable: set[str] = set()
     for pattern in allowed_patterns:
         matches = {a for a in used if fnmatch.fnmatchcase(a.lower(), pattern.lower())}
         if matches:
@@ -127,7 +131,7 @@ def _split_by_resource(kept: set[str], resource_map: ResourceMap | None) -> tupl
 
 def minimized_policy(kept: set[str], resource_map: ResourceMap | None = None) -> Json:
     wildcard, scoped = _split_by_resource(kept, resource_map)
-    statements = []
+    statements: list[Json] = []
     if wildcard:
         statements.append(
             {
@@ -145,7 +149,9 @@ def minimized_policy(kept: set[str], resource_map: ResourceMap | None = None) ->
 
 def tf_diff(role_name: str, kept: set[str], removable: set[str], resource_map: ResourceMap | None = None) -> str:
     wildcard, scoped = _split_by_resource(kept, resource_map)
-    statements = []
+    # (actions, resource) pairs, where the resource is already rendered as the
+    # HCL literal it will appear as.
+    statements: list[tuple[list[str], str]] = []
     if wildcard:
         statements.append((wildcard, '"*"'))
     for action, arns in sorted(scoped.items()):
@@ -181,13 +187,25 @@ def tf_diff(role_name: str, kept: set[str], removable: set[str], resource_map: R
     return "\n".join(lines)
 
 
-def fetch_role_policies(role_name: str, client: Client | None = None) -> list[Json]:
-    # Only the AWS-reading paths need boto3; --tf-diff and the report do not,
-    # and must work without it installed.
+def _aws_client(service: str, given: Client | None) -> Client:
+    """The caller's client, or a live boto3 one for `service`.
+
+    boto3 ships no annotations, so this is the single place where an untyped
+    client crosses into the tool; every reader below takes it as a Client.
+
+    The import is inside the function because only the AWS-reading paths need
+    boto3 -- --tf-diff and the report must work without it installed.
+    """
+    if given is not None:
+        return given
     import boto3  # noqa: PLC0415
 
-    iam = client or boto3.client("iam")
-    docs = []
+    return boto3.client(service)  # pyright: ignore[reportUnknownMemberType, reportUnknownVariableType]
+
+
+def fetch_role_policies(role_name: str, client: Client | None = None) -> list[Json]:
+    iam = _aws_client("iam", client)
+    docs: list[Json] = []
     for name in iam.list_role_policies(RoleName=role_name)["PolicyNames"]:
         docs.append(iam.get_role_policy(RoleName=role_name, PolicyName=name)["PolicyDocument"])
     for attached in iam.list_attached_role_policies(RoleName=role_name)["AttachedPolicies"]:
@@ -207,17 +225,17 @@ def fetch_events_via_athena(
 ) -> list[Json]:
     """Run the CloudTrail Lake query from the README and return CloudTrail-shaped events."""
 
-    # Only the AWS-reading paths need boto3; --tf-diff and the report do not,
-    # and must work without it installed.
-    import boto3  # noqa: PLC0415
-
-    athena = client or boto3.client("athena")
+    athena = _aws_client("athena", client)
     query = ATHENA_QUERY.format(table=table, role_name=role_name, days=days)
     exec_id = athena.start_query_execution(
         QueryString=query,
         ResultConfiguration={"OutputLocation": output_location},
     )["QueryExecutionId"]
 
+    # Named before the loop so a query that never reaches a terminal state --
+    # including a zero-attempt poll -- is reported as one that did not finish,
+    # rather than raising NameError on the line that was meant to report it.
+    state = "UNKNOWN"
     for _ in range(ATHENA_POLL_ATTEMPTS):
         state = athena.get_query_execution(QueryExecutionId=exec_id)["QueryExecution"]["Status"]["State"]
         if state in ATHENA_TERMINAL_STATES:
@@ -227,8 +245,8 @@ def fetch_events_via_athena(
         raise RuntimeError(f"Athena query {exec_id} ended in state {state}")
 
     rows = athena.get_query_results(QueryExecutionId=exec_id)["ResultSet"]["Rows"]
-    header = [c.get("VarCharValue") for c in rows[0]["Data"]]
-    events = []
+    header = [str(c.get("VarCharValue", "")) for c in rows[0]["Data"]]
+    events: list[Json] = []
     for row in rows[1:]:
         values = [c.get("VarCharValue") for c in row["Data"]]
         events.append(dict(zip(header, values, strict=True)))
@@ -242,15 +260,11 @@ def fetch_analyzer_unused_actions(analyzer_arn: str, role_arn: str, client: Clie
     CloudTrail doesn't log by default (many List/Describe/Get calls), so this
     is a cross-check on top of the CloudTrail-based shrink, not a replacement.
     """
-    # Only the AWS-reading paths need boto3; --tf-diff and the report do not,
-    # and must work without it installed.
-    import boto3  # noqa: PLC0415
-
-    analyzer = client or boto3.client("accessanalyzer")
-    actions = set()
-    next_token = None
+    analyzer = _aws_client("accessanalyzer", client)
+    actions: set[str] = set()
+    next_token: str | None = None
     while True:
-        kwargs = {
+        kwargs: Json = {
             "analyzerArn": analyzer_arn,
             "filter": {
                 "resource": {"eq": [role_arn]},
@@ -260,7 +274,8 @@ def fetch_analyzer_unused_actions(analyzer_arn: str, role_arn: str, client: Clie
         if next_token:
             kwargs["nextToken"] = next_token
         page = analyzer.list_findings_v2(**kwargs)
-        for finding in page.get("findings", []):
+        findings: list[Json] = page.get("findings", [])
+        for finding in findings:
             actions.update(finding.get("action", []) or finding.get("actions", []))
         next_token = page.get("nextToken")
         if not next_token:
