@@ -1,0 +1,82 @@
+.TH IAM\-SHRINK 1 "2026-09" "iam-shrink" "User Commands"
+.SH NAME
+iam-shrink \- shrink IAM policies to what CloudTrail says is actually used
+.SH SYNOPSIS
+.B iam-shrink
+.B analyze
+.I ROLE_NAME
+.RI [ options ]
+.SH DESCRIPTION
+Compares the actions a role is allowed against the actions it has actually
+used, and emits the smaller policy \(em as a report, as a policy document,
+or as a Terraform diff.
+.PP
+Allowed actions come from the role's attached and inline policies. Used
+actions come either from a pre-exported JSON of CloudTrail events, or from
+an Athena query over CloudTrail Lake.
+.SH COMMANDS
+.TP
+.BI analyze " ROLE_NAME"
+Analyse one role.
+.SH OPTIONS
+.TP
+.BI \-\-usage " FILE"
+JSON file of CloudTrail events, as
+.I [{eventSource, eventName}, ...]
+.TP
+.BI \-\-athena\-table " TABLE"
+CloudTrail Lake table to query instead of
+.BR \-\-usage .
+Requires
+.BR \-\-athena\-output .
+.TP
+.BI \-\-athena\-output " S3_URI"
+S3 URI for Athena query results.
+.TP
+.BI \-\-athena\-days " N"
+Lookback window in days.
+.TP
+.BI \-\-format " FORMAT"
+.BR report ,
+.B policy
+or
+.B tf-diff
+(default report).
+.TP
+.BI \-\-analyzer\-arn " ARN"
+IAM Access Analyzer ARN. Cross-checks its unused-permission findings
+against the CloudTrail-based result. Report format only, and requires
+.BR \-\-role\-arn .
+.TP
+.BI \-\-role\-arn " ARN"
+Role ARN to look up in Access Analyzer.
+.TP
+.B \-\-open\-pr
+Commit the Terraform diff on a new branch and open a pull request with
+.BR gh .
+Run from inside the target infrastructure repository.
+.SH EXIT STATUS
+.TP
+.B 0
+An analysis was produced.
+.TP
+.B non-zero
+AWS could not be queried, or the arguments were rejected.
+.SH EXAMPLES
+.PP
+From an exported event history:
+.PP
+.RS
+.B iam-shrink analyze deploy-role \-\-usage events.json
+.RE
+.PP
+Straight to a reviewable Terraform change:
+.PP
+.RS
+.B iam-shrink analyze deploy-role \-\-usage events.json \-\-format tf-diff
+.RE
+.SH SEE ALSO
+.BR cost-diff (1),
+.BR idle-hunter (1).
+Project documentation:
+https://github.com/fabiocicerchia/iam-shrink
