@@ -4,6 +4,18 @@ All notable changes to this project are documented here. This file is
 maintained automatically by [release-please](https://github.com/googleapis/release-please)
 from Conventional Commit messages — do not edit it by hand.
 
+## [0.3.0](https://github.com/fabiocicerchia/iam-shrink/compare/v0.2.2...v0.3.0) (2026-09-10)
+
+
+### Features
+
+* **packaging:** ship a man page with the wheel ([#86](https://github.com/fabiocicerchia/iam-shrink/issues/86)) ([6d1da46](https://github.com/fabiocicerchia/iam-shrink/commit/6d1da4698e83e2a921961fe1a7c6ac1ac0f5a310))
+
+
+### Bug Fixes
+
+* **release:** grant id-token on the job that calls the signing workflow ([#90](https://github.com/fabiocicerchia/iam-shrink/issues/90)) ([4fbfa6c](https://github.com/fabiocicerchia/iam-shrink/commit/4fbfa6c66beb3e7e310a782aa038b03b3b83d15d))
+
 ## [0.2.2](https://github.com/fabiocicerchia/iam-shrink/compare/v0.2.1...v0.2.2) (2026-09-08)
 
 
