@@ -45,7 +45,10 @@ footer{margin-top:2.2rem;color:#5c6684;font-size:.82rem}
 <div class="card">
   <h1>🔐 iam-shrink</h1>
   <p class="tagline">CloudTrail usage → minimized IAM policies as Terraform diffs.</p>
-  <p class="desc">Compares what a role is allowed to do with what it actually did over an observation window, narrows wildcards to observed actions, and emits a reviewable Terraform snippet — the &quot;usage → PR&quot; loop IAM never had.</p>
+  <p class="desc">
+    Compares what a role is allowed to do with what it actually did over an observation window, narrows wildcards to
+    observed actions, and emits a reviewable Terraform snippet — the &quot;usage → PR&quot; loop IAM never had.
+  </p>
   <div class="install-label">Install</div>
   <pre><code>curl -fsSL https://raw.githubusercontent.com/fabiocicerchia/iam-shrink/main/install.sh | bash</code></pre>
   <p class="alt">or: <code>pipx install git+https://github.com/fabiocicerchia/iam-shrink</code></p>
