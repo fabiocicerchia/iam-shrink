@@ -4,6 +4,13 @@ All notable changes to this project are documented here. This file is
 maintained automatically by [release-please](https://github.com/googleapis/release-please)
 from Conventional Commit messages — do not edit it by hand.
 
+## [0.3.1](https://github.com/fabiocicerchia/iam-shrink/compare/v0.3.0...v0.3.1) (2026-09-11)
+
+
+### Bug Fixes
+
+* **release:** let the release PR carry a token that isn't GITHUB_TOKEN ([#93](https://github.com/fabiocicerchia/iam-shrink/issues/93)) ([8795af0](https://github.com/fabiocicerchia/iam-shrink/commit/8795af0aa1aac084ef5ab2d1c50389baa631d727))
+
 ## [0.3.0](https://github.com/fabiocicerchia/iam-shrink/compare/v0.2.2...v0.3.0) (2026-09-10)
 
 
