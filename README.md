@@ -28,6 +28,25 @@ $ iam-shrink analyze my-app-role --usage q3-events.json \
     --format tf-diff > shrink.tf
 ```
 
+## Features
+
+- Compares what a role is **allowed** to do with what it **actually did** over
+  an observation window, from CloudTrail usage data.
+- Narrows wildcards down to observed actions and shows the result as a
+  KEEP/REMOVE list you can read in one screen.
+- Emits a **reviewable Terraform snippet** (`--format tf-diff`), which closes
+  the "usage → PR" loop IAM never had — the change lands in the repo, not in
+  the console.
+- Resource-level narrowing where the evidence supports it: actions whose
+  CloudTrail events carry a `resources[].ARN` get a real resource, the rest
+  keep `Resource: "*"` rather than a guess.
+- Works from any `{eventSource, eventName}` export — CloudTrail Lake, Athena,
+  or anything else that can produce the pairs.
+- Honest about the swamp it operates in: **data events are not logged by
+  default**, so without them the shrink over-removes; some `List`/`Describe`
+  calls are invisible to CloudTrail and need an allowlist. Review the diff,
+  always.
+
 ## Install
 
 ```sh
