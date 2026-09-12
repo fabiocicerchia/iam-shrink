@@ -4,6 +4,13 @@ All notable changes to this project are documented here. This file is
 maintained automatically by [release-please](https://github.com/googleapis/release-please)
 from Conventional Commit messages — do not edit it by hand.
 
+## [0.3.2](https://github.com/fabiocicerchia/iam-shrink/compare/v0.3.1...v0.3.2) (2026-09-12)
+
+
+### Documentation
+
+* add a Features section to the README ([#95](https://github.com/fabiocicerchia/iam-shrink/issues/95)) ([11cc716](https://github.com/fabiocicerchia/iam-shrink/commit/11cc716ebe494c52595cc3adc1c7d043b62b3169))
+
 ## [0.3.1](https://github.com/fabiocicerchia/iam-shrink/compare/v0.3.0...v0.3.1) (2026-09-11)
 
 
