@@ -4,6 +4,13 @@ All notable changes to this project are documented here. This file is
 maintained automatically by [release-please](https://github.com/googleapis/release-please)
 from Conventional Commit messages — do not edit it by hand.
 
+## [0.3.3](https://github.com/fabiocicerchia/iam-shrink/compare/v0.3.2...v0.3.3) (2026-09-20)
+
+
+### Bug Fixes
+
+* **ci:** keep actions: read on the job that uploads sarif ([#104](https://github.com/fabiocicerchia/iam-shrink/issues/104)) ([6b722af](https://github.com/fabiocicerchia/iam-shrink/commit/6b722af0e5d0c57d467039aec7d7d8e555a7fa52))
+
 ## [0.3.2](https://github.com/fabiocicerchia/iam-shrink/compare/v0.3.1...v0.3.2) (2026-09-12)
 
 
