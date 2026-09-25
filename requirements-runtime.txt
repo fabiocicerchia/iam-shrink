@@ -5,9 +5,9 @@ boto3==1.43.90 \
     --hash=sha256:4b669742d5b45b8fd20ca50ac414a4e4cf995ebb8f280d21be28676e71c97594 \
     --hash=sha256:aaaa1216d65ddb3dcf86bf9d93cfa436af05cbcd1e1f8b2847f2b83116012186
     # via iam-shrink (pyproject.toml)
-botocore==1.43.90 \
-    --hash=sha256:65f3394ef07314e45c92a90120988531d651136390d464a94938a92f665893f7 \
-    --hash=sha256:a139ed601e8b8fb1d730022355fe2b284b8c15cfe9ac0f100254a35d2273e1d3
+botocore==1.43.95 \
+    --hash=sha256:0fda26d16c7c7bf7082c421390a817b696f98a43d3da7c43dbbb093f76662876 \
+    --hash=sha256:779588da32bd48a7bb0c097da4bcb747260e86d2bfc507369dca56f1450e0722
     # via
     #   boto3
     #   s3transfer
