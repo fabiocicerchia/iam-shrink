@@ -4,9 +4,9 @@ basedpyright==1.40.2 \
     --hash=sha256:3a53aeb93a86675ded0e12bc27bd8476c1742356de07ad8cab67bff18110c690 \
     --hash=sha256:d4db36d095230379acc66c7e5fba7e4b50ca902f6e803d696782dd031cb8d7d7
     # via iam-shrink (pyproject.toml)
-boto3==1.43.110 \
-    --hash=sha256:0251b67d99cc0e7b958db48e7dd149094d453377fcd03299fde7329f975db2e6 \
-    --hash=sha256:74b811e6def4b30d685d4539a9ead3796f0e03a2112f00134e0f5e583ad8b098
+boto3==1.43.116 \
+    --hash=sha256:89fa15e7d1788fb17cbd694b034beba57f43f30f58f4506913a5b62220f8ba01 \
+    --hash=sha256:9dca4dbd464b189041b27b5a02280bd5e02c3051bebf6bd03cd0e47aaf558030
     # via iam-shrink (pyproject.toml)
 botocore==1.43.113 \
     --hash=sha256:8908e4a5fe94a06801a7bf4c451717a38145cc4ffa41aaffa50665940b64b4fa \
