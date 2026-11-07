@@ -1,0 +1,624 @@
+{
+ "excluded": {
+  "iam-shrink/dockerfile": [
+   {
+    "candidate": "Multi-stage build keeps build tooling out of the final image",
+    "covered_by": "",
+    "reason": "TECH_BUILD",
+    "source": "Dockerfile#build"
+   },
+   {
+    "candidate": "Base images pinned by sha256 digest",
+    "covered_by": "",
+    "reason": "TECH_BUILD",
+    "source": "Dockerfile#FROM"
+   },
+   {
+    "candidate": "Build backend and runtime dependencies installed from hash-pinned lockfiles (--require-hashes, --no-build-isolation, --no-deps)",
+    "covered_by": "",
+    "reason": "TECH_BUILD",
+    "source": "Dockerfile#RUN"
+   },
+   {
+    "candidate": "Wheel and requirements file removed from /tmp after install; pip cache disabled",
+    "covered_by": "",
+    "reason": "TECH_BUILD",
+    "source": "Dockerfile#RUN"
+   },
+   {
+    "candidate": "Running with a read-only root filesystem (--read-only)",
+    "covered_by": "",
+    "reason": "UNVERIFIABLE",
+    "source": "Dockerfile#ENTRYPOINT"
+   }
+  ],
+  "iam-shrink/iam-shrink": [
+   {
+    "candidate": "Lazy boto3 import / injectable AWS client",
+    "covered_by": "",
+    "reason": "INTERNAL_MECHANISM",
+    "source": "iam_shrink.py#_aws_client"
+   },
+   {
+    "candidate": "Athena poll interval and attempt count (1 s x 60)",
+    "covered_by": "",
+    "reason": "INTERNAL_MECHANISM",
+    "source": "iam_shrink.py#fetch_events_via_athena"
+   },
+   {
+    "candidate": "Athena result rows converted to event objects via header row",
+    "covered_by": "",
+    "reason": "INTERNAL_MECHANISM",
+    "source": "iam_shrink.py#fetch_events_via_athena"
+   },
+   {
+    "candidate": "Policy Statement/Action accepted as single object or list",
+    "covered_by": "shrink.current.inline-and-attached-policies",
+    "reason": "DUPLICATE_OF",
+    "source": "iam_shrink.py#allowed_actions"
+   },
+   {
+    "candidate": "Access Analyzer findings paginated across pages",
+    "covered_by": "report.analyzer.flags-unused-not-kept",
+    "reason": "DUPLICATE_OF",
+    "source": "iam_shrink.py#fetch_analyzer_unused_actions"
+   },
+   {
+    "candidate": "Resource ARNs collected only for events that record them",
+    "covered_by": "policy.scoped-to-observed-resources",
+    "reason": "DUPLICATE_OF",
+    "source": "iam_shrink.py#used_action_resources"
+   },
+   {
+    "candidate": "Policy Sid naming for scoped statements",
+    "covered_by": "policy.scoped-to-observed-resources",
+    "reason": "DUPLICATE_OF",
+    "source": "iam_shrink.py#minimized_policy"
+   },
+   {
+    "candidate": "--format accepts only report, policy, tf-diff; --athena-days must be an integer",
+    "covered_by": "",
+    "reason": "TRIVIAL",
+    "source": "iam_shrink.py#build_parser"
+   },
+   {
+    "candidate": "Help/description text of the CLI",
+    "covered_by": "",
+    "reason": "TRIVIAL",
+    "source": "iam_shrink.py#build_parser"
+   },
+   {
+    "candidate": "PR body text naming the generating command",
+    "covered_by": "",
+    "reason": "TRIVIAL",
+    "source": "iam_shrink.py#open_pr"
+   }
+  ],
+  "iam-shrink/install": [
+   {
+    "candidate": "Script uses bash with nounset and pipefail strict mode",
+    "covered_by": "",
+    "reason": "INTERNAL_MECHANISM",
+    "source": "install.sh#install.sh"
+   },
+   {
+    "candidate": "Usage comment documenting the curl | bash one-liner",
+    "covered_by": "",
+    "reason": "TRIVIAL",
+    "source": "install.sh#install.sh"
+   },
+   {
+    "candidate": "Refusing to install on Python older than 3.10",
+    "covered_by": "",
+    "reason": "UNVERIFIABLE",
+    "source": "install.sh#install.sh"
+   }
+  ],
+  "iam-shrink/makefile": [
+   {
+    "candidate": "make help lists every target that has a '## ' description, with the target name padded to 10 characters",
+    "covered_by": "",
+    "reason": "TECH_BUILD",
+    "source": "Makefile#help"
+   },
+   {
+    "candidate": "make setup installs the pre-commit hook (pre-commit install)",
+    "covered_by": "",
+    "reason": "TECH_DEVTOOLING",
+    "source": "Makefile#setup"
+   },
+   {
+    "candidate": "make install installs the package from the working tree (pip install .)",
+    "covered_by": "",
+    "reason": "TECH_BUILD",
+    "source": "Makefile#install"
+   },
+   {
+    "candidate": "make dev does an editable install with the [dev] extras",
+    "covered_by": "",
+    "reason": "TECH_DEVTOOLING",
+    "source": "Makefile#dev"
+   },
+   {
+    "candidate": "make lint runs every pre-commit hook over all files (not just 'ruff check .', as CLAUDE.md says)",
+    "covered_by": "",
+    "reason": "TECH_BUILD",
+    "source": "Makefile#lint"
+   },
+   {
+    "candidate": "make test runs the test suite with pytest -q",
+    "covered_by": "",
+    "reason": "TECH_DEVTOOLING",
+    "source": "Makefile#test"
+   },
+   {
+    "candidate": "make build builds the sdist and wheel with python -m build",
+    "covered_by": "",
+    "reason": "TECH_BUILD",
+    "source": "Makefile#build"
+   },
+   {
+    "candidate": "make run prints the iam-shrink --help usage text",
+    "covered_by": "",
+    "reason": "TECH_BUILD",
+    "source": "Makefile#run"
+   },
+   {
+    "candidate": "make format rewrites the sources with ruff format (CLAUDE.md names black as the formatter)",
+    "covered_by": "",
+    "reason": "TECH_BUILD",
+    "source": "Makefile#format"
+   },
+   {
+    "candidate": "make analyze type-checks the package with basedpyright (it is not the iam-shrink analyze command)",
+    "covered_by": "",
+    "reason": "TECH_BUILD",
+    "source": "Makefile#analyze"
+   }
+  ]
+ },
+ "lifted": {
+  "iam-shrink/dockerfile": [
+   {
+    "from_source": "Dockerfile#USER",
+    "rule": "distribution.container-image.runs-as-non-root"
+   }
+  ],
+  "iam-shrink/iam-shrink": [],
+  "iam-shrink/install": [],
+  "iam-shrink/makefile": []
+ },
+ "retired": [],
+ "scenarios": {
+  "change-delivery.command-line.001": {
+   "file": "specs/change-delivery/command-line/analyze-command-line.feature",
+   "fingerprint": "dd4e710e2333",
+   "human": false,
+   "rule": "cli.analyze.invalid-flag-combinations-refused",
+   "source": "iam_shrink.py#reject_conflicting_flags",
+   "status": "gap",
+   "test": "",
+   "tests": []
+  },
+  "change-delivery.pull-requests.001": {
+   "file": "specs/change-delivery/pull-requests/pull-requests.feature",
+   "fingerprint": "c091c460ccd8",
+   "human": false,
+   "rule": "pr.open-with-tf-diff",
+   "source": "iam_shrink.py#open_pr",
+   "status": "verified",
+   "test": "tests/test_iam_shrink.py#test_open_pr_writes_file_and_shells_out_in_order",
+   "tests": [
+    "tests/test_iam_shrink.py#test_open_pr_writes_file_and_shells_out_in_order"
+   ]
+  },
+  "change-delivery.pull-requests.002": {
+   "file": "specs/change-delivery/pull-requests/pull-requests.feature",
+   "fingerprint": "18efb2197b99",
+   "human": false,
+   "rule": "pr.failed-step-aborts",
+   "source": "iam_shrink.py#_run_checked",
+   "status": "gap",
+   "test": "",
+   "tests": []
+  },
+  "distribution.container-image.001": {
+   "file": "specs/distribution/container-image/container-image.feature",
+   "fingerprint": "1d8de4edf7c4",
+   "human": false,
+   "rule": "distribution.container-image.runs-cli-as-entrypoint",
+   "source": "Dockerfile#ENTRYPOINT",
+   "status": "inferred",
+   "test": "",
+   "tests": []
+  },
+  "distribution.container-image.002": {
+   "file": "specs/distribution/container-image/container-image.feature",
+   "fingerprint": "3040fbd08274",
+   "human": false,
+   "rule": "distribution.container-image.runs-as-non-root",
+   "source": "Dockerfile#USER",
+   "status": "inferred",
+   "test": "",
+   "tests": []
+  },
+  "distribution.installer.001": {
+   "file": "specs/distribution/installer/one-line-installer.feature",
+   "fingerprint": "1150772f1a3b",
+   "human": false,
+   "rule": "distribution.installer.prefers-pipx-then-user-pip",
+   "source": "install.sh#install.sh",
+   "status": "inferred",
+   "test": "",
+   "tests": []
+  },
+  "distribution.installer.002": {
+   "file": "specs/distribution/installer/one-line-installer.feature",
+   "fingerprint": "1150772f1a3b",
+   "human": false,
+   "rule": "distribution.installer.failure-stops-without-success-message",
+   "source": "install.sh#install.sh",
+   "status": "inferred",
+   "test": "",
+   "tests": []
+  },
+  "distribution.installer.003": {
+   "file": "specs/distribution/installer/one-line-installer.feature",
+   "fingerprint": "1150772f1a3b",
+   "human": false,
+   "rule": "distribution.installer.installs-unpinned-default-branch",
+   "source": "install.sh#install.sh",
+   "status": "inferred",
+   "test": "",
+   "tests": []
+  },
+  "outputs.minimized-policy.001": {
+   "file": "specs/outputs/minimized-policy/minimized-policy.feature",
+   "fingerprint": "38979dcb9fde",
+   "human": false,
+   "rule": "policy.unscoped-actions-on-any-resource",
+   "source": "iam_shrink.py#minimized_policy",
+   "status": "verified",
+   "test": "tests/test_iam_shrink.py#test_outputs_are_deterministic",
+   "tests": [
+    "tests/test_iam_shrink.py#test_outputs_are_deterministic",
+    "tests/test_iam_shrink.py#test_minimized_policy_narrows_resource_for_actions_with_known_arns"
+   ]
+  },
+  "outputs.minimized-policy.002": {
+   "file": "specs/outputs/minimized-policy/minimized-policy.feature",
+   "fingerprint": "38979dcb9fde",
+   "human": false,
+   "rule": "policy.scoped-to-observed-resources",
+   "source": "iam_shrink.py#minimized_policy",
+   "status": "verified",
+   "test": "tests/test_iam_shrink.py#test_minimized_policy_narrows_resource_for_actions_with_known_arns",
+   "tests": [
+    "tests/test_iam_shrink.py#test_minimized_policy_narrows_resource_for_actions_with_known_arns",
+    "tests/test_iam_shrink.py#test_used_action_resources_only_collects_actions_with_arns"
+   ]
+  },
+  "outputs.minimized-policy.003": {
+   "file": "specs/outputs/minimized-policy/minimized-policy.feature",
+   "fingerprint": "eefc2eb6a4d0",
+   "human": false,
+   "rule": "policy.original-resource-scope-not-preserved",
+   "source": "iam_shrink.py#allowed_actions",
+   "status": "gap",
+   "test": "",
+   "tests": []
+  },
+  "outputs.minimized-policy.004": {
+   "file": "specs/outputs/minimized-policy/minimized-policy.feature",
+   "fingerprint": "38979dcb9fde",
+   "human": false,
+   "rule": "policy.nothing-used-empty-policy",
+   "source": "iam_shrink.py#minimized_policy",
+   "status": "gap",
+   "test": "",
+   "tests": []
+  },
+  "outputs.terraform-diff.001": {
+   "file": "specs/outputs/terraform-diff/terraform-diff.feature",
+   "fingerprint": "141a6e9534fc",
+   "human": false,
+   "rule": "tfdiff.role-policy-resource",
+   "source": "iam_shrink.py#tf_diff",
+   "status": "verified",
+   "test": "tests/test_iam_shrink.py#test_outputs_are_deterministic",
+   "tests": [
+    "tests/test_iam_shrink.py#test_outputs_are_deterministic"
+   ]
+  },
+  "outputs.terraform-diff.002": {
+   "file": "specs/outputs/terraform-diff/terraform-diff.feature",
+   "fingerprint": "141a6e9534fc",
+   "human": false,
+   "rule": "tfdiff.removed-permissions-commented",
+   "source": "iam_shrink.py#tf_diff",
+   "status": "verified",
+   "test": "tests/test_iam_shrink.py#test_outputs_are_deterministic",
+   "tests": [
+    "tests/test_iam_shrink.py#test_outputs_are_deterministic"
+   ]
+  },
+  "outputs.terraform-diff.003": {
+   "file": "specs/outputs/terraform-diff/terraform-diff.feature",
+   "fingerprint": "141a6e9534fc",
+   "human": false,
+   "rule": "tfdiff.scoped-to-observed-resources",
+   "source": "iam_shrink.py#tf_diff",
+   "status": "verified",
+   "test": "tests/test_iam_shrink.py#test_tf_diff_narrows_resource_for_actions_with_known_arns",
+   "tests": [
+    "tests/test_iam_shrink.py#test_tf_diff_narrows_resource_for_actions_with_known_arns"
+   ]
+  },
+  "outputs.usage-report.001": {
+   "file": "specs/outputs/usage-report/usage-report.feature",
+   "fingerprint": "a9a3685515ae",
+   "human": false,
+   "rule": "report.keep-remove-listing",
+   "source": "iam_shrink.py#render_report",
+   "status": "gap",
+   "test": "",
+   "tests": []
+  },
+  "outputs.usage-report.002": {
+   "file": "specs/outputs/usage-report/usage-report.feature",
+   "fingerprint": "2ee823a94303",
+   "human": false,
+   "rule": "report.analyzer.flags-unused-not-kept",
+   "source": "iam_shrink.py#render_analyzer_crosscheck",
+   "status": "gap",
+   "test": "",
+   "tests": []
+  },
+  "outputs.usage-report.003": {
+   "file": "specs/outputs/usage-report/usage-report.feature",
+   "fingerprint": "39ea9179dade",
+   "human": false,
+   "rule": "report.analyzer.report-format-only",
+   "source": "iam_shrink.py#main",
+   "status": "gap",
+   "test": "",
+   "tests": []
+  },
+  "policy-analysis.permission-shrinking.001": {
+   "file": "specs/policy-analysis/permission-shrinking/permission-shrinking.feature",
+   "fingerprint": "eea36a3c149d",
+   "human": false,
+   "rule": "shrink.patterns.keep-used-remove-unused",
+   "source": "iam_shrink.py#shrink",
+   "status": "verified",
+   "test": "tests/test_iam_shrink.py#test_shrink_narrows_wildcards_and_finds_unused",
+   "tests": [
+    "tests/test_iam_shrink.py#test_shrink_narrows_wildcards_and_finds_unused"
+   ]
+  },
+  "policy-analysis.permission-shrinking.002": {
+   "file": "specs/policy-analysis/permission-shrinking/permission-shrinking.feature",
+   "fingerprint": "eea36a3c149d",
+   "human": false,
+   "rule": "shrink.patterns.case-insensitive-match",
+   "source": "iam_shrink.py#shrink",
+   "status": "gap",
+   "test": "",
+   "tests": []
+  },
+  "policy-analysis.permission-shrinking.003": {
+   "file": "specs/policy-analysis/permission-shrinking/permission-shrinking.feature",
+   "fingerprint": "87de2113e253",
+   "human": false,
+   "rule": "shrink.current.inline-and-attached-policies",
+   "source": "iam_shrink.py#fetch_role_policies",
+   "status": "verified",
+   "test": "tests/test_iam_shrink.py#test_fetch_role_policies_combines_inline_and_attached",
+   "tests": [
+    "tests/test_iam_shrink.py#test_fetch_role_policies_combines_inline_and_attached"
+   ]
+  },
+  "policy-analysis.permission-shrinking.004": {
+   "file": "specs/policy-analysis/permission-shrinking/permission-shrinking.feature",
+   "fingerprint": "eefc2eb6a4d0",
+   "human": false,
+   "rule": "shrink.current.only-allow-statements-considered",
+   "source": "iam_shrink.py#allowed_actions",
+   "status": "verified",
+   "test": "tests/test_iam_shrink.py#test_allowed_flattening_handles_string_and_dict_statements",
+   "tests": [
+    "tests/test_iam_shrink.py#test_allowed_flattening_handles_string_and_dict_statements"
+   ]
+  },
+  "usage-data.action-extraction.001": {
+   "file": "specs/usage-data/action-extraction/observed-usage-from-events.feature",
+   "fingerprint": "faa0784fdb5b",
+   "human": false,
+   "rule": "usage.events.mapped-to-iam-actions",
+   "source": "iam_shrink.py#event_action",
+   "status": "verified",
+   "test": "tests/test_iam_shrink.py#test_event_mapping_known_and_fallback",
+   "tests": [
+    "tests/test_iam_shrink.py#test_event_mapping_known_and_fallback"
+   ]
+  },
+  "usage-data.action-extraction.002": {
+   "file": "specs/usage-data/action-extraction/observed-usage-from-events.feature",
+   "fingerprint": "faa0784fdb5b",
+   "human": false,
+   "rule": "usage.events.unmapped-name-used-verbatim",
+   "source": "iam_shrink.py#event_action",
+   "status": "gap",
+   "test": "",
+   "tests": []
+  },
+  "usage-data.action-extraction.003": {
+   "file": "specs/usage-data/action-extraction/observed-usage-from-events.feature",
+   "fingerprint": "39ea9179dade",
+   "human": false,
+   "rule": "usage.event-file.missing-file-aborts",
+   "source": "iam_shrink.py#main",
+   "status": "gap",
+   "test": "",
+   "tests": []
+  },
+  "usage-data.athena-queries.001": {
+   "file": "specs/usage-data/athena-queries/athena-usage-query.feature",
+   "fingerprint": "8c8706bb2d17",
+   "human": false,
+   "rule": "usage.athena.role-and-lookback-window",
+   "source": "iam_shrink.py#fetch_events_via_athena",
+   "status": "verified",
+   "test": "tests/test_iam_shrink.py#test_fetch_events_via_athena_runs_query_and_parses_rows",
+   "tests": [
+    "tests/test_iam_shrink.py#test_fetch_events_via_athena_runs_query_and_parses_rows"
+   ]
+  },
+  "usage-data.athena-queries.002": {
+   "file": "specs/usage-data/athena-queries/athena-usage-query.feature",
+   "fingerprint": "97b8b4d06497",
+   "human": false,
+   "rule": "usage.athena.role-match-by-name-suffix",
+   "source": "iam_shrink.py#ATHENA_QUERY",
+   "status": "gap",
+   "test": "",
+   "tests": []
+  },
+  "usage-data.athena-queries.003": {
+   "file": "specs/usage-data/athena-queries/athena-usage-query.feature",
+   "fingerprint": "8c8706bb2d17",
+   "human": false,
+   "rule": "usage.athena.unfinished-query-aborts",
+   "source": "iam_shrink.py#fetch_events_via_athena",
+   "status": "gap",
+   "test": "",
+   "tests": []
+  }
+ },
+ "taxonomy": {
+  "domains": [
+   {
+    "areas": [
+     {
+      "description": "Loading CloudTrail events from a local JSON file supplied with --usage.",
+      "slug": "event-files",
+      "title": "Event files"
+     },
+     {
+      "description": "Querying a CloudTrail Lake / Athena table for a role's events over a lookback window, with results written to S3.",
+      "slug": "athena-queries",
+      "title": "Athena queries"
+     },
+     {
+      "description": "Turning raw events into the set of used IAM actions and the resources each action touched.",
+      "slug": "action-extraction",
+      "title": "Action extraction"
+     }
+    ],
+    "description": "Collecting the record of what a role actually did, from files or AWS sources.",
+    "slug": "usage-data",
+    "title": "Usage Data"
+   },
+   {
+    "areas": [
+     {
+      "description": "Fetching a role's attached and inline policies from IAM and expanding the actions they allow.",
+      "slug": "current-permissions",
+      "title": "Current permissions"
+     },
+     {
+      "description": "Matching allowed action patterns against used actions to decide what to keep and what to remove.",
+      "slug": "permission-shrinking",
+      "title": "Permission shrinking"
+     },
+     {
+      "description": "Comparing the CloudTrail result with IAM Access Analyzer unused-permission findings for the role.",
+      "slug": "access-analyzer-crosscheck",
+      "title": "Access Analyzer cross-check"
+     }
+    ],
+    "description": "Comparing what a role is allowed to do with what it actually used.",
+    "slug": "policy-analysis",
+    "title": "Policy Analysis"
+   },
+   {
+    "areas": [
+     {
+      "description": "Human-readable KEEP/REMOVE listing with counts for the role.",
+      "slug": "usage-report",
+      "title": "Usage report"
+     },
+     {
+      "description": "A least-privilege IAM policy JSON document, scoped to observed resources where known.",
+      "slug": "minimized-policy",
+      "title": "Minimized policy"
+     },
+     {
+      "description": "A Terraform change showing the role's policy rewritten to only the kept actions.",
+      "slug": "terraform-diff",
+      "title": "Terraform diff"
+     }
+    ],
+    "description": "The forms in which iam-shrink presents its recommendation.",
+    "slug": "outputs",
+    "title": "Outputs"
+   },
+   {
+    "areas": [
+     {
+      "description": "Committing the Terraform diff on a new branch and opening a pull request with gh.",
+      "slug": "pull-requests",
+      "title": "Pull requests"
+     },
+     {
+      "description": "The analyze command, its options and the validation of conflicting or missing flag combinations.",
+      "slug": "command-line",
+      "title": "Command line"
+     }
+    ],
+    "description": "Getting the recommended policy change into the infrastructure repository for review.",
+    "slug": "change-delivery",
+    "title": "Change Delivery"
+   },
+   {
+    "areas": [
+     {
+      "description": "One-line script that installs iam-shrink via pipx or pip from GitHub.",
+      "slug": "installer",
+      "title": "Installer"
+     },
+     {
+      "description": "Hardened, hash-pinned multi-stage Docker image running the CLI as a non-root user.",
+      "slug": "container-image",
+      "title": "Container image"
+     }
+    ],
+    "description": "How users obtain and run iam-shrink.",
+    "slug": "distribution",
+    "title": "Distribution"
+   },
+   {
+    "areas": [
+     {
+      "description": "Installing the package, dev dependencies and the pre-commit hook.",
+      "slug": "local-setup",
+      "title": "Local setup"
+     },
+     {
+      "description": "Running lint and the test suite.",
+      "slug": "quality-checks",
+      "title": "Quality checks"
+     },
+     {
+      "description": "Building the source distribution and wheel.",
+      "slug": "packaging",
+      "title": "Packaging"
+     }
+    ],
+    "description": "Tasks contributors use to set up, check and build the project.",
+    "slug": "developer-tooling",
+    "title": "Developer Tooling"
+   }
+  ]
+ }
+}
