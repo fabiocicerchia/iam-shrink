@@ -18,8 +18,8 @@ Feature: Reviewing the usage report
   Scenario: The Access Analyzer cross-check lists unused findings the CloudTrail result did not keep
     Given Access Analyzer reports "s3:GetObject", "s3:ListBucket" and "dynamodb:Scan" as unused for the role, across several result pages
     When the operator analyzes "my-app-role" with an analyzer ARN and the role ARN
-    Then the report ends with "ACCESS ANALYZER ALSO FLAGGED AS UNUSED (2):"
-    And it lists "⚠ dynamodb:Scan" and "⚠ s3:ListBucket"
+    Then the report ends with a section headed "ACCESS ANALYZER ALSO FLAGGED AS UNUSED (2):"
+    And that section lists "⚠ dynamodb:Scan" then "⚠ s3:ListBucket"
     And "s3:GetObject" is not listed
 
   @id:outputs.usage-report.003 @rule:report.analyzer.report-format-only @gap @source:iam_shrink.py#main @questionable

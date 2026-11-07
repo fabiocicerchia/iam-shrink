@@ -28,7 +28,7 @@ Feature: Querying CloudTrail Lake for a role's usage
   Scenario Outline: An Athena query that does not succeed stops the analysis
     Given the Athena query <outcome>
     When the operator analyzes "my-app-role" against the Athena table
-    Then the analysis stops with the error "Athena query <query_id> ended in state <state>"
+    Then the analysis stops with an error naming the query execution id and ending "ended in state <state>"
     And no report, policy or Terraform is printed
 
     Examples:

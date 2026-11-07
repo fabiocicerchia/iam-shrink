@@ -18,5 +18,6 @@ Feature: Opening a pull request with the proposed change
     Given a branch "iam-shrink/my-app-role" already exists
     When the operator analyzes "my-app-role" with format "tf-diff" and asks to open a pull request
     Then no pull request is opened and no URL is printed
+    And the Terraform has already been printed on standard output
     And "my-app-role-minimized.tf" remains written in the working tree
     And the command exits with a non-zero status and an error traceback

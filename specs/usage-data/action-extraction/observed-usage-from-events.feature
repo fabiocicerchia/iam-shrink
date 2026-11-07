@@ -6,7 +6,7 @@ Feature: Recognising which IAM actions a role used
     Given the role "my-app-role" exists in the AWS account
 
   @id:usage-data.action-extraction.001 @rule:usage.events.mapped-to-iam-actions @verified @source:iam_shrink.py#event_action @test:tests/test_iam_shrink.py#test_event_mapping_known_and_fallback
-  Scenario Outline: Each CloudTrail event counts as use of the IAM action it corresponds to
+  Scenario Outline: Each CloudTrail event counts as use of the IAM action iam-shrink maps it to
     Given a usage file containing an event from "<event_source>" named "<event_name>"
     When the operator analyzes "my-app-role" with that usage file
     Then the action "<iam_action>" is counted as used

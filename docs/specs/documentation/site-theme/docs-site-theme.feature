@@ -9,10 +9,10 @@ Feature: Branding the documentation site
   Scenario: The splash page and the docs share one orange-red accent palette
     Given the theme's accent pair is orange #fb923c and red #ef4444
     When a reader opens the splash page and then the rendered docs
-    Then the docs header, primary colour and links on a light background use red #ef4444
+    Then the docs primary colour and links on a light background use red #ef4444
     And the interactive accent and feature-card icons use orange #fb923c
     And the home hero title and primary buttons show an orange-to-red gradient
-    And the splash page title and install button show the same orange-to-red gradient
+    And the splash page title and its GitHub button show the same orange-to-red gradient
 
   @id:docs.documentation.site-theme.002 @rule:docs.theme.no-network-assets @inferred @source:docs/stylesheets/extra.css#:root
   Scenario: The docs theme loads no web fonts or third-party assets
