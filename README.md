@@ -1,5 +1,11 @@
 # iam-shrink
 
+> [!WARNING]
+> **This project is retired** and no longer maintained. If you need something
+> for this, [trailscraper](https://github.com/flosell/trailscraper) turns
+> CloudTrail history into the IAM policy a role actually needs. It is a separate
+> project, actively developed, and worth a look.
+
 [![CI](https://github.com/fabiocicerchia/iam-shrink/actions/workflows/ci.yml/badge.svg)](https://github.com/fabiocicerchia/iam-shrink/actions/workflows/ci.yml)
 [![Security](https://github.com/fabiocicerchia/iam-shrink/actions/workflows/security.yml/badge.svg)](https://github.com/fabiocicerchia/iam-shrink/actions/workflows/security.yml)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
